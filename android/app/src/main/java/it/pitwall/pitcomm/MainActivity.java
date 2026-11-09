@@ -46,6 +46,8 @@ public class MainActivity extends Activity {
 
     static final String PREFS = "pitcomm";
     static final String KEY_URL = "url";
+    // Indirizzo predefinito: al primo avvio si apre da solo, senza scriverlo.
+    static final String URL_PREDEFINITO = "https://pitwall2027.onrender.com";
     static final String CANALE_AVVISI = "pitcomm_avvisi";
     private static final int RC_PERMESSI = 1;
     private static final int RC_POSIZIONE = 2;
@@ -79,8 +81,7 @@ public class MainActivity extends Activity {
         avviaServizio();
         chiediNessunRisparmioBatteria();
 
-        String url = prefs.getString(KEY_URL, "");
-        if (url.isEmpty()) mostraIndirizzo(null); else apri(url);
+        apri(prefs.getString(KEY_URL, URL_PREDEFINITO));
     }
 
     // ---------- pagina ----------
@@ -176,8 +177,7 @@ public class MainActivity extends Activity {
         Button riprova = new Button(this);
         riprova.setText("Riprova");
         riprova.setOnClickListener(v -> {
-            String url = prefs.getString(KEY_URL, "");
-            if (!url.isEmpty()) apri(url);
+            apri(prefs.getString(KEY_URL, URL_PREDEFINITO));
         });
         l.addView(riprova);
         return l;
@@ -185,7 +185,7 @@ public class MainActivity extends Activity {
 
     private void mostraIndirizzo(String testo) {
         messaggio.setText(testo != null ? testo : "Scrivi l'indirizzo della web app di PitComm (quello di Render).");
-        campoUrl.setText(prefs.getString(KEY_URL, ""));
+        campoUrl.setText(prefs.getString(KEY_URL, URL_PREDEFINITO));
         schermataIndirizzo.setVisibility(View.VISIBLE);
     }
 
