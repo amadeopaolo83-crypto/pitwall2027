@@ -1,0 +1,43 @@
+name: Android APK
+
+on:
+  push:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Compila l'APK
+        run: gradle -p android assembleDebug --no-daemon --stacktrace
+
+      - name: Salva l'APK tra gli artefatti
+        uses: actions/upload-artifact@v4
+        with:
+          name: PitComm-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Pubblica in Releases (ultima versione)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk PitComm.apk
+          gh release delete apk-latest --cleanup-tag --yes || true
+          gh release create apk-latest PitComm.apk --title "PitComm APK" --notes "Ultima versione compilata. Scaricala dal telefono e installala." --target "${{ github.sha }}"

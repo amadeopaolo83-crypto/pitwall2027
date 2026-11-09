@@ -173,6 +173,7 @@ function crControlla(chiave, vera, testo){
   crAvvisi = crAvvisi.slice(0, 4);
   try{ if(navigator.vibrate) navigator.vibrate([250, 120, 250]); }catch(e){}
   try{ playAlertBeep(); }catch(e){}
+  try{ if(window.PitCommAndroid) PitCommAndroid.notifica('Allarme di gara', testo); }catch(e){}
 }
 
 function crAllarmi(){

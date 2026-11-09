@@ -208,6 +208,7 @@ function avvisaMessaggio(){
   if(role !== 'box') return; // la sirena e' solo del box
   if(navigator.vibrate) navigator.vibrate(SOS_VIBRATION);
   if(loadSirenSettings().on) playSiren(); else playAlertBeep();
+  try{ if(window.PitCommAndroid) PitCommAndroid.notifica('PitComm', 'Nuovo messaggio'); }catch(e){}
 }
 
 function renderAlarmCard(){
