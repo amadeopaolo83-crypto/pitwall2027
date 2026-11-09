@@ -185,7 +185,7 @@ function mergeHistory(nuovi, dalVivo){
   const tutti = attuali.concat(aggiunti).sort((a, b) => a.at - b.at).slice(-HISTORY_MAX);
   saveHistoryLocal(tutti);
   renderHistory(tutti);
-  if(dalVivo) avvisaMessaggio();
+  if(dalVivo) avvisaMessaggio(aggiunti.length ? aggiunti[aggiunti.length - 1].label : '');
   return true;
 }
 
@@ -204,14 +204,15 @@ function clearLog(){
 // ---------- avviso, sirena e schermo acceso ----------
 
 // Un messaggio dal vivo: vibrazione SOS e sirena (o un bip, se la sirena e' spenta).
-function avvisaMessaggio(){
+function avvisaMessaggio(testo){
   if(role !== 'box') return; // la sirena e' solo del box
   if(navigator.vibrate) navigator.vibrate(SOS_VIBRATION);
   if(loadSirenSettings().on) playSiren(); else playAlertBeep();
-  try{ if(window.PitCommAndroid) PitCommAndroid.notifica('PitComm', 'Nuovo messaggio'); }catch(e){}
+  notificaAndroid('PitComm \u00b7 messaggio dall\u2019auto', testo || 'Nuovo messaggio');
 }
 
 function renderAlarmCard(){
+  if($('provaNotificaRiga')) $('provaNotificaRiga').hidden = !window.PitCommAndroid;
   const s = loadSirenSettings();
   if($('sirenToggle')) $('sirenToggle').checked = s.on;
   if($('sirenVolume')) $('sirenVolume').value = Math.round(s.volume * 100);
@@ -235,6 +236,9 @@ function testSiren(){
   if(navigator.vibrate) navigator.vibrate(SOS_VIBRATION);
   playSiren();
 }
+
+// Solo nell'app Android: prova la notifica con la sirena (come a schermo spento).
+function testNotificaAndroid(){ notificaAndroid('PitComm', 'Prova della sirena delle notifiche', true); }
 
 // Schermo sempre acceso sul box: la pagina resta in primo piano e la connessione non
 // cade, cosi' la sirena suona sempre. Si perde se la pagina va in secondo piano e si

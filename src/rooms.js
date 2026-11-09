@@ -13,6 +13,9 @@ const { AUB_URL, AUB_USER } = require("./config");
 // Stato in memoria per ogni codice team: { fuel, autonomyMinutes, dayMode,
 // quickButtons, timing, lastFlash }
 const rooms = new Map();
+// Foto della schermata finale caricata dal box, per stanza: { buf: Buffer, at: numero }. Il testo
+// (JPEG) non sta nello stato che si manda ai telefoni: nello stato c'e' solo `finishPhotoAt`.
+const fotoFinale = new Map();
 
 function getRoomState(code) {
   if (!rooms.has(code)) {
@@ -37,7 +40,8 @@ function getRoomState(code) {
       sogliaGap: 0.1, // secondi: di quanto deve cambiare un distacco prima che cambi colore (0.1, 0.25, 0.5, 1)
       // GPS e automatismi (spenti all'inizio): zona del box e zona del rifornimento, con il
       // raggio in metri. Lo imposta il box; la posizione la manda il telefono dell'auto.
-      gps: { on: false, box: null, refuel: null, rBox: 10, rRefuel: 25, fermoS: 60 }, // fermoS: secondi fermi nella zona rifornimento oltre i quali conta come cambio pilota
+      gps: { on: false, box: null, refuel: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 60 }, // corsia: percorso registrato della corsia box; larg: metri di tolleranza dalla linea; fermoS: secondi fermi in corsia oltre i quali si chiede se e' un cambio pilota
+      finishPhotoAt: null, // quando e' stata caricata la foto finale della squadra (null = quella predefinita)
       lastFlash: null,
       // Messaggi dall'auto, i piu' recenti: li riceve chi si ricollega (per esempio
       // il box dopo che lo schermo e' stato spento). Si perdono con un riavvio del server.
@@ -132,4 +136,4 @@ function eProva(code) {
   return /^TEST\d+$/.test(String(code || ""));
 }
 
-module.exports = { rooms, getRoomState, posizioneFinale, eProva };
+module.exports = { rooms, fotoFinale, getRoomState, posizioneFinale, eProva };

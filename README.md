@@ -25,5 +25,20 @@ Si accendono dal box: **Impostazioni → GPS e automatismi**.
   Serve restare circa 10 secondi nella zona; punti con precisione peggiore di 30 m si ignorano; senza segnale resta l'ultimo stato.
 - Solo il telefono con **"Questo telefono applica lo stato"** acceso cambia in pista / ai box (si accende da solo su chi accende il GPS).
 - A mano si corregge sempre: **In pista** / **Ai box** valgono sempre; il GPS interviene solo quando la zona cambia. **Allinea ora al GPS** forza lo stato che dice il GPS.
-- **Soglia di tempo fermo** (secondi, impostabile): fermi al rifornimento oltre la soglia, il box chiede "era un cambio pilota?". Sì = si registra il cambio e riparte il "turno pilota". Una sola domanda per sosta.
+- **Corsia box**: si registra una volta (**Registra corsia box**, si percorre la corsia dall'ingresso all'uscita, si preme di nuovo). Vale una striscia attorno alla linea, con tolleranza in metri (8 di partenza).
+- **Soglia di tempo fermo** (secondi, impostabile): se l'auto resta ferma (entro 6 m dallo stesso punto) dentro la corsia box oltre la soglia, anche fuori dalle zone box e rifornimento, il box chiede "era un cambio pilota?". Sì = si registra il cambio e riparte il "turno pilota". Una sola domanda per sosta; se l'auto si muove la domanda sparisce. Senza corsia registrata valgono le zone box e rifornimento.
 - Server: eventi `gpsConfigUpdate` (solo box) e `gpsPos` (solo auto, al massimo 1/s, solo a GPS acceso); le zone si salvano con le altre impostazioni.
+
+## Sirena nelle notifiche (APK)
+
+Nell'APK le notifiche (messaggi dall'auto, allarmi di gara, domanda cambio pilota) hanno come suono una sirena
+(`android/app/src/main/res/raw/sirena.wav`, volume "sveglia" del telefono) e vibrazione. Partono solo quando la pagina non
+e' in primo piano (schermo spento o altra app): con la pagina aperta suona la sirena della pagina, per non averne due.
+In Impostazioni → Allarme messaggi, nell'APK, c'e' "Prova la notifica con sirena".
+
+## Foto della schermata finale
+
+Il box la carica da Timing → Finish → **Carica foto finale** (si sceglie dalla galleria, anche dall'APK). Viene ridotta
+a 1280 px e vale per tutta la squadra; **Foto predefinita** la toglie. Senza foto caricata: la stanza `FLATSIX` mostra
+`public/finish-photo.jpg`, le altre stanze lo sfondo scuro. La foto si serve da `/foto-finale/CODICE` e si salva con le
+altre impostazioni (stessa cartella o Redis, chiave a parte).

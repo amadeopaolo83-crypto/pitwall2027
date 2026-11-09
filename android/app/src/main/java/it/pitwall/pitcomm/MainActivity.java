@@ -11,6 +11,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -48,7 +49,7 @@ public class MainActivity extends Activity {
     static final String KEY_URL = "url";
     // Indirizzo predefinito: al primo avvio si apre da solo, senza scriverlo.
     static final String URL_PREDEFINITO = "https://pitwall2027.onrender.com";
-    static final String CANALE_AVVISI = "pitcomm_avvisi";
+    static final String CANALE_AVVISI = "pitcomm_sirena";
     private static final int RC_PERMESSI = 1;
     private static final int RC_POSIZIONE = 2;
 
@@ -58,6 +59,9 @@ public class MainActivity extends Activity {
     private TextView messaggio;
     private EditText campoUrl;
     private boolean errorePagina = false;
+
+    private static final int RC_FILE = 3;
+    private android.webkit.ValueCallback<Uri[]> scelteFile;
 
     private String posizioneOrigine;
     private GeolocationPermissions.Callback posizioneRichiamo;
@@ -94,7 +98,7 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false); // la sirena deve poter suonare da sola
         s.setGeolocationEnabled(true);
-        s.setUserAgentString(s.getUserAgentString() + " PitCommAndroid/1.0");
+        s.setUserAgentString(s.getUserAgentString() + " PitCommAndroid/1.1");
         w.addJavascriptInterface(new Ponte(), "PitCommAndroid");
         w.setWebViewClient(new WebViewClient() {
             @Override
@@ -111,6 +115,23 @@ public class MainActivity extends Activity {
             }
         });
         w.setWebChromeClient(new WebChromeClient() {
+            // Scelta di un file (la foto finale): apre il selettore di immagini del telefono.
+            @Override
+            public boolean onShowFileChooser(WebView v, android.webkit.ValueCallback<Uri[]> cb, FileChooserParams params) {
+                if (scelteFile != null) scelteFile.onReceiveValue(null);
+                scelteFile = cb;
+                Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType("image/*");
+                try {
+                    startActivityForResult(Intent.createChooser(i, "Scegli la foto"), RC_FILE);
+                } catch (Exception e) {
+                    scelteFile = null;
+                    return false;
+                }
+                return true;
+            }
+
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
                 if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -207,6 +228,17 @@ public class MainActivity extends Activity {
         }
     }
 
+    @Override
+    protected void onActivityResult(int codice, int esito, Intent dati) {
+        super.onActivityResult(codice, esito, dati);
+        if (codice == RC_FILE && scelteFile != null) {
+            Uri[] r = null;
+            if (esito == RESULT_OK && dati != null && dati.getData() != null) r = new Uri[]{dati.getData()};
+            scelteFile.onReceiveValue(r);
+            scelteFile = null;
+        }
+    }
+
     private void avviaServizio() {
         startForegroundService(new Intent(this, KeepAliveService.class));
     }
@@ -225,9 +257,15 @@ public class MainActivity extends Activity {
 
     private void creaCanaleAvvisi() {
         NotificationManager nm = getSystemService(NotificationManager.class);
-        NotificationChannel c = new NotificationChannel(CANALE_AVVISI, "Avvisi di gara", NotificationManager.IMPORTANCE_HIGH);
+        NotificationChannel c = new NotificationChannel(CANALE_AVVISI, "Avvisi di gara (sirena)", NotificationManager.IMPORTANCE_HIGH);
         c.enableVibration(true);
         c.setVibrationPattern(new long[]{0, 400, 200, 400, 200, 400});
+        // La sirena e' il suono delle notifiche: segue il volume "sveglia" del telefono.
+        AudioAttributes aa = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
+        c.setSound(Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.sirena), aa);
         nm.createNotificationChannel(c);
     }
 
@@ -296,6 +334,6 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versione() { return "1.0"; }
+        public String versione() { return "1.1"; }
     }
 }

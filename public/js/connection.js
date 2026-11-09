@@ -183,6 +183,7 @@ function applyState(state){
   applyTimingView(state.timingView || 'assoluta');
   applyAutoLayout(state.autoLayout || 'telefono');
   applySogliaGap(state.sogliaGap);
+  if(typeof applyFinishPhoto === 'function') applyFinishPhoto(state.finishPhotoAt);
   if(typeof gpsApplicaConfig === 'function') gpsApplicaConfig(state.gps);
   if(state.timing) renderTiming(state.timing);
   if(state.aub) renderAubStatus(state.aub);
@@ -219,6 +220,7 @@ function registerListeners(){
   socket.on('timingViewUpdate', (v) => applyTimingView(v.view));
   socket.on('autoLayoutUpdate', (v) => applyAutoLayout(v.layout));
   socket.on('sogliaGapUpdate', (v) => applySogliaGap(v.valore));
+  socket.on('finishPhotoChanged', (v) => { if(typeof applyFinishPhoto === 'function') applyFinishPhoto(v && v.at); });
   socket.on('gpsConfigUpdate', (c) => { if(typeof gpsApplicaConfig === 'function') gpsApplicaConfig(c); });
   socket.on('gpsPos', (p) => { if(typeof gpsRicevi === 'function') gpsRicevi(p); });
   socket.on('passoUpdate', passoRicevi);

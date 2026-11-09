@@ -27,6 +27,7 @@ const httpServer = http.createServer(serviRichiesta);
 
 const io = new Server(httpServer, {
   cors: { origin: "*" }, // in produzione: restringere all'origine del client
+  maxHttpBufferSize: 2e6, // la foto finale (JPEG ridimensionato) puo' superare il limite di 1 MB di partenza
 });
 
 aub.init(io);

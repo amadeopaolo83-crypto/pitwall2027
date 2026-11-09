@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<link rel="stylesheet" href="css/style.css?v=36" />
+<link rel="stylesheet" href="css/style.css?v=37" />
 </head>
 <body>
 
@@ -95,7 +95,7 @@
 <div id="flashOverlay" hidden><div class="txt" id="flashText"></div></div>
 
 <div id="finishScreen" hidden class="finish-screen">
-  <img src="finish-photo.jpg" class="finish-photo-img" alt="" />
+  <img id="finishPhotoImg" class="finish-photo-img" alt="" />
   <div class="finish-overlay-gradient"></div>
   <div class="finish-content">
     <div class="finish-position" id="finishPositionLabel">—</div>
@@ -344,6 +344,15 @@
       <button class="btn seg-btn" id="finishBgPhoto" onclick="finishSetBackground('photo')">Foto squadra</button>
       <button class="btn seg-btn" id="finishBgDark" onclick="finishSetBackground('dark')">Scuro</button>
     </div>
+    <div class="row" style="justify-content:flex-start;gap:12px;">
+      <img id="finishFotoPrev" alt="" style="width:96px;height:64px;object-fit:cover;border-radius:8px;background:var(--panel-2);flex:none;">
+      <div style="display:flex;flex-direction:column;gap:8px;flex:1;">
+        <button class="btn small" onclick="document.getElementById('finishFotoFile').click()">Carica foto finale</button>
+        <button class="btn small" onclick="finishFotoPredefinita()">Foto predefinita</button>
+      </div>
+      <input type="file" id="finishFotoFile" accept="image/*" hidden onchange="finishFotoScelta(this)">
+    </div>
+    <div class="row"><span class="mono" id="finishFotoMsg" style="font-size:11px;color:var(--muted);line-height:1.4;">Con "Foto squadra" l'auto mostra questa foto all'arrivo. La foto viene ridimensionata e vale per tutta la squadra.</span></div>
     <div class="row"><input type="text" id="finishDriverInput" placeholder="Nome pilota" oninput="finishDriverNameChanged()"></div>
     <div class="row"><input type="number" id="finishPositionInput" placeholder="Posizione (vuoto = dai distacchi)"></div>
     <div class="row"><button class="btn primary" style="width:100%" onclick="finishTriggerManual()">Mostra schermata Finish</button></div>
@@ -408,6 +417,7 @@
     <div class="row" style="flex-wrap:wrap;gap:8px;">
       <button class="btn small" onclick="gpsImpostaZona('box', this)">Zona BOX = qui</button>
       <button class="btn small" onclick="gpsImpostaZona('refuel', this)">Zona RIFORNIMENTO = qui</button>
+      <button class="btn small" onclick="gpsRegistraCorsia(this)">Registra corsia box</button>
     </div>
     <div class="row"><span class="mono" id="gpsZone" style="font-size:12px;">Zona box: non impostata · Zona rifornimento: non impostata</span></div>
     <div class="row al-riga"><span>Raggio zona box (m)</span><span></span>
@@ -416,17 +426,20 @@
     <div class="row al-riga"><span>Raggio zona rifornimento (m)</span><span></span>
       <input type="number" id="gpsRRefuel" min="3" max="300" step="1" style="text-align:center;" onchange="gpsNumero('rRefuel', this, 3, 300)">
     </div>
-    <div class="row al-riga"><span>Fermi al rifornimento oltre (s): chiede se è un cambio pilota</span><span></span>
+    <div class="row al-riga"><span>Tolleranza dalla linea della corsia (m)</span><span></span>
+      <input type="number" id="gpsLarg" min="2" max="40" step="1" style="text-align:center;" onchange="gpsNumero('larg', this, 2, 40)">
+    </div>
+    <div class="row al-riga"><span>Auto ferma in corsia oltre (s): chiede se è un cambio pilota</span><span></span>
       <input type="number" id="gpsFermoS" min="5" max="900" step="5" style="text-align:center;" onchange="gpsNumero('fermoS', this, 5, 900)">
     </div>
     <div class="row" style="flex-wrap:wrap;gap:8px;">
       <button class="btn small" onclick="gpsAllineaOra()">Allinea ora al GPS</button>
       <button class="btn small" onclick="gpsRegistraCambio()">Segna cambio pilota</button>
       <button class="btn small" onclick="gpsAzzeraCambi()">Azzera turno pilota</button>
-      <button class="btn small" onclick="gpsCancellaZone(this)">Cancella le zone</button>
+      <button class="btn small" onclick="gpsCancellaZone(this)">Cancella zone e corsia</button>
     </div>
     <div class="row"><span class="mono" id="gpsMsg" style="font-size:11px;color:var(--muted);line-height:1.4;"></span></div>
-    <div class="row"><span class="mono" style="font-size:11px;color:var(--muted);line-height:1.4;">Con il GPS acceso il telefono dell'auto manda la posizione e il box passa da solo tra in pista, ai box e rifornimento (serve restare nella zona circa 10 secondi). I pulsanti "In pista" e "Ai box" funzionano sempre e correggono a mano. Imposta le zone stando fermo nel punto, all'aperto.</span></div>
+    <div class="row"><span class="mono" style="font-size:11px;color:var(--muted);line-height:1.4;">Con il GPS acceso il telefono dell'auto manda la posizione e il box passa da solo tra in pista, ai box e rifornimento (serve restare nella zona circa 10 secondi). I pulsanti "In pista" e "Ai box" funzionano sempre e correggono a mano. Imposta le zone stando fermo nel punto, all'aperto. Per la corsia box premi "Registra corsia box", percorrila dall'ingresso all'uscita e premi di nuovo: se l'auto resta ferma lungo la corsia oltre la soglia, il box chiede se era un cambio pilota.</span></div>
   </div>
   <div class="card">
     <h3>Allarmi di gara</h3>
@@ -459,6 +472,7 @@
       <input type="range" id="sirenVolume" min="20" max="100" step="10" oninput="setSirenVolume(this.value)">
     </div>
     <div class="row"><button class="btn small" style="width:100%" onclick="testSiren()">Prova la sirena</button></div>
+    <div class="row" id="provaNotificaRiga" hidden><button class="btn small" style="width:100%" onclick="testNotificaAndroid()">Prova la notifica con sirena (app Android)</button></div>
     <div class="row"><span>Schermo sempre acceso</span>
       <label class="toggle"><input type="checkbox" id="awakeToggle" onchange="setBoxAwake(this.checked)"><span class="knob"></span></label>
     </div>
@@ -485,19 +499,19 @@
 <!-- Script semplici, non moduli: l'ordine di caricamento e' quello delle
      dipendenze, e le funzioni restano globali come le vogliono gli onclick
      scritti nel markup. core.js per primo, app.js per ultimo. -->
-<script src="js/core.js?v=36"></script>
-<script src="js/push.js?v=36"></script>
-<script src="js/connection.js?v=36"></script>
-<script src="js/autoview.js?v=36"></script>
-<script src="js/fuel.js?v=36"></script>
-<script src="js/boxview.js?v=36"></script>
-<script src="js/timing.js?v=36"></script>
-<script src="js/passo.js?v=36"></script>
-<script src="js/cruscotto.js?v=36"></script>
-<script src="js/gps.js?v=36"></script>
-<script src="js/race.js?v=36"></script>
-<script src="js/timer.js?v=36"></script>
-<script src="js/install.js?v=36"></script>
-<script src="js/app.js?v=36"></script>
+<script src="js/core.js?v=37"></script>
+<script src="js/push.js?v=37"></script>
+<script src="js/connection.js?v=37"></script>
+<script src="js/autoview.js?v=37"></script>
+<script src="js/fuel.js?v=37"></script>
+<script src="js/boxview.js?v=37"></script>
+<script src="js/timing.js?v=37"></script>
+<script src="js/passo.js?v=37"></script>
+<script src="js/cruscotto.js?v=37"></script>
+<script src="js/gps.js?v=37"></script>
+<script src="js/race.js?v=37"></script>
+<script src="js/timer.js?v=37"></script>
+<script src="js/install.js?v=37"></script>
+<script src="js/app.js?v=37"></script>
 </body>
 </html>

@@ -11,6 +11,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { VAPID_PUBLIC_KEY } = require("./config");
+const { fotoFinale } = require("./rooms");
 
 const ROOT = path.join(__dirname, "..", "public");
 
@@ -57,6 +58,16 @@ function serviRichiesta(req, res) {
     }
     res.writeHead(200, { "Content-Type": "text/plain" });
     return res.end(VAPID_PUBLIC_KEY);
+  }
+
+  // Foto della schermata finale caricata dalla squadra: /foto-finale/CODICE
+  if ((req.url || "").startsWith("/foto-finale/")) {
+    let code = "";
+    try { code = decodeURIComponent((req.url.split("?")[0]).slice("/foto-finale/".length)).trim().toUpperCase(); } catch (e) { /* 404 */ }
+    const f = fotoFinale.get(code);
+    if (!f) { res.writeHead(404, { "Content-Type": "text/plain" }); return res.end(""); }
+    res.writeHead(200, { "Content-Type": "image/jpeg", "Cache-Control": "public, max-age=3600", "Content-Length": f.buf.length });
+    return res.end(req.method === "HEAD" ? undefined : f.buf);
   }
 
   // Diagnosi: i dati grezzi dell'ultimo aggiornamento di Aub e quello che ne e' stato

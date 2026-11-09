@@ -178,6 +178,53 @@ function renderFinishScreen(t){
 
 // X sulla schermata Finish (sull'auto): un tocco la chiude e rimette il
 // timer pronto per la prossima partenza.
+// ---------- foto della schermata finale ----------
+
+// Quale foto mostrare: quella caricata dalla squadra; altrimenti, per la squadra FLATSIX, la
+// foto di sempre; per le altre squadre nessuna foto (sfondo scuro).
+function applyFinishPhoto(at){
+  const img = $('finishPhotoImg'), prev = $('finishFotoPrev');
+  let src = '';
+  if(at) src = '/foto-finale/' + encodeURIComponent(code || '') + '?v=' + at;
+  else if(String(code || '').toUpperCase() === 'FLATSIX') src = 'finish-photo.jpg';
+  [img, prev].forEach((el) => {
+    if(!el) return;
+    if(src) el.setAttribute('src', src); else el.removeAttribute('src');
+  });
+}
+
+// Il box sceglie una foto: si riduce a 1280 px sul lato lungo e si manda come JPEG.
+function finishFotoScelta(input){
+  const f = input.files && input.files[0];
+  const msg = $('finishFotoMsg');
+  input.value = '';
+  if(!f) return;
+  const img = new Image();
+  const url = URL.createObjectURL(f);
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    const k = Math.min(1, 1280 / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    let q = 0.85, data = c.toDataURL('image/jpeg', q);
+    while(data.length > 800000 && q > 0.4){ q -= 0.1; data = c.toDataURL('image/jpeg', q); }
+    if(data.length > 800000){ if(msg) msg.textContent = 'Foto troppo pesante: scegline una piu\u2019 piccola.'; return; }
+    if(socket && socket.connected){
+      socket.emit('finishPhotoUpdate', { data });
+      if(msg) msg.textContent = 'Foto caricata (' + Math.round(data.length / 1024) + ' KB). Scegli "Foto squadra" come sfondo per vederla all\u2019arrivo.';
+    } else if(msg) msg.textContent = 'Non sono collegato: riprova tra poco.';
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); if(msg) msg.textContent = 'Non riesco a leggere questa immagine.'; };
+  img.src = url;
+}
+
+function finishFotoPredefinita(){
+  if(socket && socket.connected) socket.emit('finishPhotoUpdate', { data: null });
+  const msg = $('finishFotoMsg');
+  if(msg) msg.textContent = 'Tornata alla foto predefinita.';
+}
+
 function finishClose(){
   socket.emit('timerDebugJump', { preset: 'reset' });
 }

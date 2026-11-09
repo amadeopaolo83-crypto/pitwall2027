@@ -3,7 +3,7 @@
 // Ogni "team" e' una stanza identificata dal codice inserito nell'app: chi
 // conosce il codice entra, e ogni messaggio raggiunge solo quella stanza.
 
-const { getRoomState, posizioneFinale, eProva } = require("./rooms");
+const { getRoomState, fotoFinale, posizioneFinale, eProva } = require("./rooms");
 const archivio = require("./archivio");
 const { notifyBoxDevices, togliDispositivo } = require("./push");
 const aub = require("./aub");
@@ -556,6 +556,28 @@ function registra(io) {
     });
 
     // ----- FINISH -----
+
+    // BOX -> tutti: foto della schermata finale (JPEG gia' ridimensionato dal telefono, come
+    // "data:image/jpeg;base64,..."), oppure null per tornare a quella predefinita.
+    socket.on("finishPhotoUpdate", ({ data } = {}) => {
+      if (!joinedCode || joinedRole !== "box") return;
+      const state = getRoomState(joinedCode);
+      if (data === null) {
+        fotoFinale.delete(joinedCode);
+        state.finishPhotoAt = null;
+        archivio.scriviFoto(joinedCode, null).catch((e) => console.error("foto finale: " + (e.message || e)));
+        return io.to(joinedCode).emit("finishPhotoChanged", { at: null });
+      }
+      const m = typeof data === "string" && data.length <= 900000 ? /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(data) : null;
+      if (!m) return;
+      const buf = Buffer.from(m[1], "base64");
+      if (buf.length < 100 || buf[0] !== 0xff || buf[1] !== 0xd8) return; // non e' un JPEG
+      const at = Date.now();
+      fotoFinale.set(joinedCode, { buf, at });
+      state.finishPhotoAt = at;
+      archivio.scriviFoto(joinedCode, data).catch((e) => console.error("foto finale: " + (e.message || e)));
+      io.to(joinedCode).emit("finishPhotoChanged", { at });
+    });
 
     // BOX -> tutti: configura modalita' (manuale/auto), sfondo e nome pilota
     // senza far comparire subito la schermata (preparazione in anticipo)

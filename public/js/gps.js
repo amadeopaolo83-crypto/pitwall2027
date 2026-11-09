@@ -7,7 +7,9 @@
 //   conta come ai box per il carburante); fuori = "in pista".
 // - Una zona vale solo dopo GPS_ATTESA_MS di permanenza (per non reagire a un passaggio) e
 //   i punti poco precisi si ignorano. Con segnale perso lo stato resta quello di prima.
-// - Fermi nella zona rifornimento piu' a lungo della soglia (secondi, impostabile) = cambio pilota.
+// - La corsia box si registra una volta percorrendola (striscia di asfalto, con tolleranza in metri).
+//   Fermi dentro la corsia piu' a lungo della soglia (secondi, impostabile) = il box chiede
+//   "era un cambio pilota?". Conta la posizione ferma, non la zona box o rifornimento.
 // - Tutto si puo' correggere a mano: i pulsanti "In pista" / "Ai box" valgono sempre, e il
 //   GPS interviene solo quando la zona cambia davvero.
 
@@ -16,7 +18,10 @@ const GPS_ACC_MAX = 30;        // metri: oltre, il punto non si usa
 const GPS_PERSO_MS = 20000;    // senza punti per tanto = segnale perso
 const GPS_USCITA_EXTRA = 5;    // metri in piu' per uscire da una zona in cui si e' gia'
 
-let gpsCfg = { on: false, box: null, refuel: null, rBox: 10, rRefuel: 25, fermoS: 60 };
+const GPS_FERMO_M = 6;         // metri: entro tanto dal punto di sosta si considera fermo
+const GPS_PASSO_REG_M = 3;     // registrazione corsia: un punto ogni tanti metri
+
+let gpsCfg = { on: false, box: null, refuel: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 60 };
 let gpsUltima = null;          // ultimo punto ricevuto { lat, lng, acc, t }
 let gpsUltimaBuona = 0;        // quando e' arrivato l'ultimo punto preciso
 let gpsStato = null;           // 'pista' | 'box' | 'rifornimento' (confermato)
@@ -27,6 +32,8 @@ let gpsInvioUltimo = 0;
 let gpsCambio = load('pc_gps_cambio', { n: 0, da: null }); // cambi pilota registrati e inizio turno
 let gpsCambioFatto = false;    // alla domanda di questa sosta si e' gia' risposto
 let gpsChiede = false;         // la domanda "era un cambio pilota?" e' sul box
+let gpsAncora = null, gpsAncoraDa = 0; // dove e da quando l'auto e' ferma
+let gpsInCorsia = false;       // l'ultimo punto preciso e' dentro la corsia box
 
 function gpsApplica(){ try{ return localStorage.getItem('pc_gps_applica') === '1'; }catch(e){ return false; } }
 
@@ -42,7 +49,7 @@ function gpsDistanza(a, b){
 function gpsApplicaConfig(c){
   if(!c || typeof c !== 'object') return;
   gpsCfg = { ...gpsCfg, ...c };
-  if(!gpsCfg.on){ gpsStato = null; gpsCandidato = null; gpsCambioFatto = false; gpsChiede = false; }
+  if(!gpsCfg.on){ gpsStato = null; gpsCandidato = null; gpsCambioFatto = false; gpsChiede = false; gpsAncora = null; }
   if(role === 'auto') gpsAggiornaInvio();
   gpsRender();
 }
@@ -115,17 +122,48 @@ function gpsImpostaZona(quale, btn){
   }, 7000);
 }
 
+// Registra la corsia box: si preme, si percorre la corsia (a piedi o con l'auto) tenendo il
+// telefono con il GPS acceso, si preme di nuovo. Un punto ogni 3 metri, solo se preciso.
+let gpsReg = null;
+function gpsLunghezza(c){ let m = 0; for(let i = 1; i < c.length; i++) m += gpsDistanza(c[i - 1], c[i]); return m; }
+function gpsRegistraCorsia(btn){
+  const et = $('gpsMsg');
+  if(gpsReg){
+    navigator.geolocation.clearWatch(gpsReg.id);
+    let pts = gpsReg.pts; gpsReg = null;
+    btn.textContent = 'Registra corsia box';
+    if(pts.length < 2){ if(et) et.textContent = 'Corsia non registrata: troppo pochi punti precisi. Riprova all\u2019aperto.'; return; }
+    while(pts.length > 500){ pts = pts.filter((_, i) => i % 2 === 0 || i === pts.length - 1); }
+    gpsInvia({ corsia: pts });
+    if(et) et.textContent = 'Corsia registrata: ' + pts.length + ' punti, ' + Math.round(gpsLunghezza(pts)) + ' m.';
+    return;
+  }
+  if(!navigator.geolocation) return;
+  gpsReg = { pts: [], id: null };
+  btn.textContent = 'Fine registrazione (0 punti)';
+  if(et) et.textContent = 'Percorri la corsia box dall\u2019ingresso all\u2019uscita, poi premi di nuovo.';
+  gpsReg.id = navigator.geolocation.watchPosition((pos) => {
+    if(!gpsReg || pos.coords.accuracy > 15) return;
+    const q = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    const pts = gpsReg.pts;
+    if(!pts.length || gpsDistanza(pts[pts.length - 1], q) >= GPS_PASSO_REG_M){
+      pts.push(q);
+      btn.textContent = 'Fine registrazione (' + pts.length + ' punti)';
+    }
+  }, () => {}, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+}
+
 let gpsCancellaPronto = false;
 function gpsCancellaZone(btn){
   if(!gpsCancellaPronto){
     gpsCancellaPronto = true;
     btn.textContent = 'Sicuro?';
-    setTimeout(() => { gpsCancellaPronto = false; btn.textContent = 'Cancella le zone'; }, 3000);
+    setTimeout(() => { gpsCancellaPronto = false; btn.textContent = 'Cancella zone e corsia'; }, 3000);
     return;
   }
   gpsCancellaPronto = false;
-  btn.textContent = 'Cancella le zone';
-  gpsInvia({ box: null, refuel: null });
+  btn.textContent = 'Cancella zone e corsia';
+  gpsInvia({ box: null, refuel: null, corsia: null });
 }
 
 // ---------- box: riceve la posizione e decide ----------
@@ -151,7 +189,7 @@ function gpsRicevi(p){
   const ora = Date.now();
   if(cand !== gpsCandidato){ gpsCandidato = cand; gpsCandidatoDa = ora; }
   if(cand !== gpsStato && ora - gpsCandidatoDa >= GPS_ATTESA_MS) gpsCambiaStato(cand);
-  gpsControllaFermo();
+  gpsAggiornaFermo(p, cand);
   gpsRender();
 }
 
@@ -159,8 +197,6 @@ function gpsCambiaStato(nuovo){
   const prima = gpsStato;
   gpsStato = nuovo;
   gpsStatoDa = Date.now();
-  gpsCambioFatto = false;
-  gpsChiede = false;
   if(nuovo === 'pista' && !gpsCambio.da){ gpsCambio.da = Date.now(); save('pc_gps_cambio', gpsCambio); }
   if(!gpsApplica()) return;
   if(typeof setOnTrack === 'function') setOnTrack(nuovo === 'pista');
@@ -177,14 +213,47 @@ function gpsAllineaOra(){
   gpsRender();
 }
 
-// ---------- cambio pilota: fermi nella zona rifornimento oltre la soglia ----------
+// ---------- cambio pilota: fermi dentro la corsia box oltre la soglia ----------
+
+// Distanza in metri dal percorso registrato della corsia (infinita se non c'e').
+function gpsDistCorsia(p){
+  const c = gpsCfg.corsia;
+  if(!c || c.length < 2) return Infinity;
+  const k = Math.PI / 180, mLat = 111320, mLng = 111320 * Math.cos(p.lat * k);
+  const X = (q) => (q.lng - p.lng) * mLng, Y = (q) => (q.lat - p.lat) * mLat;
+  let min = Infinity;
+  for(let i = 0; i < c.length - 1; i++){
+    const ax = X(c[i]), ay = Y(c[i]), bx = X(c[i + 1]), by = Y(c[i + 1]);
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+    const t = l2 > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+    min = Math.min(min, Math.hypot(ax + t * dx, ay + t * dy));
+  }
+  return min;
+}
+
+// Fermo = il telefono dell'auto resta entro pochi metri dallo stesso punto. Si ricomincia a
+// contare appena si sposta. Se la corsia non e' registrata vale la zona box o rifornimento.
+function gpsAggiornaFermo(p, zona){
+  const ora = Date.now();
+  const raggio = Math.max(GPS_FERMO_M, 2 * (p.acc || 0));
+  if(!gpsAncora || gpsDistanza(p, gpsAncora) > raggio){
+    gpsAncora = { lat: p.lat, lng: p.lng };
+    gpsAncoraDa = ora;
+    gpsChiede = false;
+    gpsCambioFatto = false;
+  }
+  gpsInCorsia = gpsCfg.corsia ? gpsDistCorsia(p) <= gpsCfg.larg : zona !== 'pista';
+  gpsControllaFermo();
+}
 
 // Superata la soglia non registra da solo: sul box compare la domanda "era un cambio pilota?".
 function gpsControllaFermo(){
-  if(gpsStato !== 'rifornimento' || gpsCambioFatto || gpsChiede) return;
-  if((Date.now() - gpsStatoDa) / 1000 >= gpsCfg.fermoS){
+  if(!gpsCfg.on || !gpsAncora || !gpsInCorsia || gpsCambioFatto || gpsChiede) return;
+  if(Date.now() - gpsUltimaBuona > GPS_PERSO_MS) return; // senza segnale non si decide
+  if((Date.now() - gpsAncoraDa) / 1000 >= gpsCfg.fermoS){
     gpsChiede = true;
     try{ if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }catch(e){}
+    if(typeof notificaAndroid === 'function') notificaAndroid('PitComm', 'Auto ferma in corsia box: era un cambio pilota?');
   }
 }
 
@@ -236,16 +305,16 @@ function gpsRender(){
   if(role !== 'box') return;
   const dom = $('gpsDomanda');
   if(dom){
-    dom.hidden = !(gpsCfg.on && gpsChiede && gpsStato === 'rifornimento');
-    if(!dom.hidden && $('gpsDomandaTesto')) $('gpsDomandaTesto').textContent = 'Fermi da ' + gpsMinSec(Date.now() - gpsStatoDa) + ' al rifornimento: era un cambio pilota?';
+    dom.hidden = !(gpsCfg.on && gpsChiede);
+    if(!dom.hidden && $('gpsDomandaTesto')) $('gpsDomandaTesto').textContent = 'Auto ferma da ' + gpsMinSec(Date.now() - gpsAncoraDa) + ' in corsia box: era un cambio pilota?';
   }
   const riga = $('gpsRiga');
   if(riga){ riga.textContent = gpsRiga(); riga.hidden = !gpsCfg.on; }
   if($('gpsOn')) $('gpsOn').checked = !!gpsCfg.on;
   if($('gpsApplica')) $('gpsApplica').checked = gpsApplica();
   const f = (id, v) => { const e = $(id); if(e && document.activeElement !== e) e.value = v; };
-  f('gpsRBox', gpsCfg.rBox); f('gpsRRefuel', gpsCfg.rRefuel); f('gpsFermoS', gpsCfg.fermoS);
-  if($('gpsZone')) $('gpsZone').textContent = 'Zona box: ' + (gpsCfg.box ? 'impostata' : 'non impostata') + ' · Zona rifornimento: ' + (gpsCfg.refuel ? 'impostata' : 'non impostata');
+  f('gpsRBox', gpsCfg.rBox); f('gpsRRefuel', gpsCfg.rRefuel); f('gpsFermoS', gpsCfg.fermoS); f('gpsLarg', gpsCfg.larg);
+  if($('gpsZone')) $('gpsZone').textContent = 'Zona box: ' + (gpsCfg.box ? 'impostata' : 'non impostata') + ' \u00b7 Zona rifornimento: ' + (gpsCfg.refuel ? 'impostata' : 'non impostata') + ' \u00b7 Corsia box: ' + (gpsCfg.corsia ? 'registrata (' + Math.round(gpsLunghezza(gpsCfg.corsia)) + ' m)' : 'non registrata');
 }
 
 setInterval(() => {

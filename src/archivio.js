@@ -18,7 +18,7 @@
 const fs = require("fs");
 const path = require("path");
 const { ARCHIVIO_URL, ARCHIVIO_TOKEN, DATA_DIR } = require("./config");
-const { rooms, getRoomState, eProva } = require("./rooms");
+const { rooms, fotoFinale, getRoomState, eProva } = require("./rooms");
 
 const RITARDO_SALVA_MS = Number(process.env.ARCHIVIO_RITARDO_MS) || 1500;
 const TIMEOUT_MS = Number(process.env.ARCHIVIO_TIMEOUT_MS) || 4000;
@@ -79,6 +79,47 @@ async function scrivi(code, oggetto) {
   }
 }
 
+// La foto finale sta a parte (e' piu' grossa): stessa cartella o stesso Redis, un'altra chiave.
+async function leggiFoto(code) {
+  const b = nome();
+  if (b === "upstash") return await conTimeout(upstash(["GET", chiave(code) + ":foto"]));
+  if (b === "cartella") {
+    try { return await fs.promises.readFile(path.join(DATA_DIR, sicuro(code) + ".foto.txt"), "utf8"); }
+    catch (e) { if (e.code === "ENOENT") return null; throw e; }
+  }
+  return null;
+}
+
+// testo = "data:image/jpeg;base64,..." oppure null per togliere la foto.
+async function scriviFoto(code, testo) {
+  const b = nome();
+  if (!b || eProva(code)) return;
+  if (b === "upstash") {
+    await conTimeout(upstash(testo ? ["SET", chiave(code) + ":foto", testo] : ["DEL", chiave(code) + ":foto"]));
+  } else {
+    await fs.promises.mkdir(DATA_DIR, { recursive: true });
+    const f = path.join(DATA_DIR, sicuro(code) + ".foto.txt");
+    if (testo) { await fs.promises.writeFile(f + ".tmp", testo); await fs.promises.rename(f + ".tmp", f); }
+    else await fs.promises.rm(f, { force: true });
+  }
+}
+
+// Rimette in memoria la foto salvata (se c'e'); un errore qui non ferma niente.
+async function caricaFoto(code, S) {
+  try {
+    const t = await leggiFoto(code);
+    const m = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(t || "");
+    if (m) {
+      const buf = Buffer.from(m[1], "base64");
+      if (buf.length > 100 && buf[0] === 0xff && buf[1] === 0xd8) {
+        const at = Date.now();
+        fotoFinale.set(code, { buf, at });
+        S.finishPhotoAt = at;
+      }
+    }
+  } catch (e) { console.error("archivio: lettura della foto di " + code + " non riuscita: " + (e.message || e)); }
+}
+
 // ---------- cosa si salva ----------
 
 function istantanea(S) {
@@ -113,6 +154,11 @@ function pulisciGps(attuali, d) {
   if (d.refuel === null) g.refuel = null; else if (punto(d.refuel)) g.refuel = { lat: d.refuel.lat, lng: d.refuel.lng };
   if (Number.isFinite(d.rBox) && d.rBox >= 3 && d.rBox <= 200) g.rBox = d.rBox;
   if (Number.isFinite(d.rRefuel) && d.rRefuel >= 3 && d.rRefuel <= 300) g.rRefuel = d.rRefuel;
+  if (d.corsia === null) g.corsia = null;
+  else if (Array.isArray(d.corsia) && d.corsia.length >= 2 && d.corsia.length <= 600 && d.corsia.every(punto)) {
+    g.corsia = d.corsia.map((q) => ({ lat: q.lat, lng: q.lng }));
+  }
+  if (Number.isFinite(d.larg) && d.larg >= 2 && d.larg <= 40) g.larg = d.larg;
   if (Number.isFinite(d.fermoS) && d.fermoS >= 5 && d.fermoS <= 900) g.fermoS = Math.round(d.fermoS);
   return g;
 }
@@ -176,6 +222,7 @@ async function prepara(code) {
         applica(S, dallArchivio.dati);
         S.archivioErrore = false;
         S.archivioSalvataggi = true;
+        await caricaFoto(code, S);
       } else {
         S.archivioErrore = true;
         S.archivioSalvataggi = false;
@@ -208,4 +255,4 @@ async function svuota() {
 
 function stato() { return { archivio: nome(), ultimoErrore }; }
 
-module.exports = { pulisciGps, prepara, segna, svuota, stato, istantanea, applica, _test: { leggi, scrivi } };
+module.exports = { scriviFoto, pulisciGps, prepara, segna, svuota, stato, istantanea, applica, _test: { leggi, scrivi } };

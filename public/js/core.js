@@ -104,6 +104,13 @@ function playSiren(){
   osc.stop(t0 + durata + 0.05);
 }
 
+// Solo nell'app Android (APK): notifica vera con la sirena del telefono. Parte quando la pagina
+// non e' in primo piano (schermo spento o altra app): con la pagina aperta suona gia' la sirena
+// della pagina, e non devono suonare due volte. `sempre` la forza (prova).
+function notificaAndroid(titolo, testo, sempre){
+  try{ if(window.PitCommAndroid && (sempre || document.hidden)) window.PitCommAndroid.notifica(titolo, String(testo || '')); }catch(e){}
+}
+
 // Bip breve (usato quando la sirena e' spenta).
 function playAlertBeep(){
   const ctx = getAudio();
