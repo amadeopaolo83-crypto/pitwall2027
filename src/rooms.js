@@ -35,6 +35,9 @@ function getRoomState(code) {
       timingView: "assoluta", // cosa mostra l'auto: "assoluta" o "categoria"
       autoLayout: "telefono", // aspetto della schermata auto: "telefono" (predefinito) o "tablet"
       sogliaGap: 0.1, // secondi: di quanto deve cambiare un distacco prima che cambi colore (0.1, 0.25, 0.5, 1)
+      // GPS e automatismi (spenti all'inizio): zona del box e zona del rifornimento, con il
+      // raggio in metri. Lo imposta il box; la posizione la manda il telefono dell'auto.
+      gps: { on: false, box: null, refuel: null, rBox: 10, rRefuel: 25, fermoS: 60 }, // fermoS: secondi fermi nella zona rifornimento oltre i quali conta come cambio pilota
       lastFlash: null,
       // Messaggi dall'auto, i piu' recenti: li riceve chi si ricollega (per esempio
       // il box dopo che lo schermo e' stato spento). Si perdono con un riavvio del server.

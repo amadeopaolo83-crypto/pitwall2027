@@ -37,7 +37,7 @@ function registra(io) {
     const SALVA = new Set([
       "fuelSystemUpdate", "autonomyUpdate", "dayModeUpdate", "quickButtonsUpdate", "flashPresetsUpdate",
       "timingViewUpdate", "autoLayoutUpdate", "sogliaGapUpdate", "timerStartSet", "timerRaceSet", "finishConfigUpdate",
-      "aubConnect", "ponteConnect",
+      "aubConnect", "ponteConnect", "gpsConfigUpdate",
     ]);
     socket.onAny((evento) => { if (joinedCode && SALVA.has(evento)) archivio.segna(joinedCode); });
 
@@ -225,6 +225,29 @@ function registra(io) {
       state.sogliaGap = v;
       state.fresh.soglia = false;
       io.to(joinedCode).emit("sogliaGapUpdate", { valore: v });
+    });
+
+    // GPS: il box imposta l'interruttore, le zone e i raggi (si possono mandare anche solo alcuni
+    // campi); lo stato nuovo arriva a tutti. Il telefono dell'auto manda la posizione solo se acceso.
+    socket.on("gpsConfigUpdate", (dati) => {
+      if (!joinedCode || joinedRole !== "box" || !dati || typeof dati !== "object") return;
+      const state = getRoomState(joinedCode);
+      state.gps = archivio.pulisciGps(state.gps, dati);
+      io.to(joinedCode).emit("gpsConfigUpdate", state.gps);
+    });
+
+    // AUTO -> BOX: posizione dell'auto (al massimo una al secondo; solo con il GPS acceso).
+    let ultimaPosizione = 0;
+    socket.on("gpsPos", (p) => {
+      if (!joinedCode || joinedRole !== "auto" || !p || typeof p !== "object") return;
+      const state = getRoomState(joinedCode);
+      if (!state.gps.on) return;
+      const lat = Number(p.lat), lng = Number(p.lng), acc = Number(p.acc);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
+      const ora = Date.now();
+      if (ora - ultimaPosizione < 800) return;
+      ultimaPosizione = ora;
+      io.to(joinedCode).emit("gpsPos", { lat, lng, acc: Number.isFinite(acc) ? acc : null, t: ora });
     });
 
     // Passo gara: riepilogo e storico dei giri della nostra vettura (chi si collega o si

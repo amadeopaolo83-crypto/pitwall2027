@@ -94,12 +94,27 @@ function istantanea(S) {
     timingView: S.timingView,
     autoLayout: S.autoLayout,
     sogliaGap: S.sogliaGap,
+    gps: S.gps,
     raceTimer: {
       startSeconds: t.startSeconds, raceSeconds: t.raceSeconds,
       finishMode: t.finishMode, finishBackground: t.finishBackground, finishDriverName: t.finishDriverName,
     },
     collegamenti: S.collegamenti,
   };
+}
+
+// Controlla un pezzo di impostazioni GPS e lo unisce a quelle che ci sono; scarta cio' che non ha la forma giusta.
+function pulisciGps(attuali, d) {
+  const g = { ...attuali };
+  const punto = (p) => p && typeof p === "object" && Number.isFinite(p.lat) && Number.isFinite(p.lng)
+    && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180;
+  if (typeof d.on === "boolean") g.on = d.on;
+  if (d.box === null) g.box = null; else if (punto(d.box)) g.box = { lat: d.box.lat, lng: d.box.lng };
+  if (d.refuel === null) g.refuel = null; else if (punto(d.refuel)) g.refuel = { lat: d.refuel.lat, lng: d.refuel.lng };
+  if (Number.isFinite(d.rBox) && d.rBox >= 3 && d.rBox <= 200) g.rBox = d.rBox;
+  if (Number.isFinite(d.rRefuel) && d.rRefuel >= 3 && d.rRefuel <= 300) g.rRefuel = d.rRefuel;
+  if (Number.isFinite(d.fermoS) && d.fermoS >= 5 && d.fermoS <= 900) g.fermoS = Math.round(d.fermoS);
+  return g;
 }
 
 const eNumero = (x) => typeof x === "number" && Number.isFinite(x);
@@ -126,6 +141,7 @@ function applica(S, d) {
   if (d.timingView === "assoluta" || d.timingView === "categoria") S.timingView = d.timingView;
   if (d.autoLayout === "telefono" || d.autoLayout === "tablet") { S.autoLayout = d.autoLayout; S.fresh.layout = false; }
   if ([0.1, 0.25, 0.5, 1].includes(d.sogliaGap)) { S.sogliaGap = d.sogliaGap; S.fresh.soglia = false; }
+  if (d.gps && typeof d.gps === "object") S.gps = pulisciGps(S.gps, d.gps);
   const t = d.raceTimer;
   if (t && typeof t === "object") {
     const R = S.raceTimer;
@@ -192,4 +208,4 @@ async function svuota() {
 
 function stato() { return { archivio: nome(), ultimoErrore }; }
 
-module.exports = { prepara, segna, svuota, stato, istantanea, applica, _test: { leggi, scrivi } };
+module.exports = { pulisciGps, prepara, segna, svuota, stato, istantanea, applica, _test: { leggi, scrivi } };

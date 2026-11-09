@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<link rel="stylesheet" href="css/style.css?v=35" />
+<link rel="stylesheet" href="css/style.css?v=36" />
 </head>
 <body>
 
@@ -149,6 +149,14 @@
     <div class="row" style="flex-wrap:wrap;gap:8px;">
       <button class="btn state-btn green" id="btnOnTrack" onclick="setOnTrack(true)">In pista</button>
       <button class="btn state-btn orange" id="btnAtBox" onclick="setOnTrack(false)">Ai box</button>
+    </div>
+    <div class="row"><span class="mono" id="gpsRiga" style="font-size:12px;" hidden></span></div>
+    <div class="gps-domanda" id="gpsDomanda" hidden>
+      <div id="gpsDomandaTesto">Era un cambio pilota?</div>
+      <div class="row" style="gap:8px;margin:8px 0 0;">
+        <button class="btn small primary" onclick="gpsRispostaCambio(true)">Sì, cambio pilota</button>
+        <button class="btn small" onclick="gpsRispostaCambio(false)">No</button>
+      </div>
     </div>
   </div>
   <!-- 2. Messaggi a schermo intero -->
@@ -389,6 +397,37 @@
       <label class="toggle"><input type="checkbox" id="dayModeToggle" onchange="sendDayMode()"><span class="knob"></span></label>
     </div>
   </div>
+  <div class="card" id="gpsCard">
+    <h3>GPS e automatismi</h3>
+    <div class="row"><span>GPS acceso (spento all'inizio)</span>
+      <label class="toggle"><input type="checkbox" id="gpsOn" onchange="gpsAccendi(this.checked)"><span class="knob"></span></label>
+    </div>
+    <div class="row"><span>Questo telefono applica lo stato in pista / ai box</span>
+      <label class="toggle"><input type="checkbox" id="gpsApplica" onchange="gpsApplicaToggle(this.checked)"><span class="knob"></span></label>
+    </div>
+    <div class="row" style="flex-wrap:wrap;gap:8px;">
+      <button class="btn small" onclick="gpsImpostaZona('box', this)">Zona BOX = qui</button>
+      <button class="btn small" onclick="gpsImpostaZona('refuel', this)">Zona RIFORNIMENTO = qui</button>
+    </div>
+    <div class="row"><span class="mono" id="gpsZone" style="font-size:12px;">Zona box: non impostata · Zona rifornimento: non impostata</span></div>
+    <div class="row al-riga"><span>Raggio zona box (m)</span><span></span>
+      <input type="number" id="gpsRBox" min="3" max="200" step="1" style="text-align:center;" onchange="gpsNumero('rBox', this, 3, 200)">
+    </div>
+    <div class="row al-riga"><span>Raggio zona rifornimento (m)</span><span></span>
+      <input type="number" id="gpsRRefuel" min="3" max="300" step="1" style="text-align:center;" onchange="gpsNumero('rRefuel', this, 3, 300)">
+    </div>
+    <div class="row al-riga"><span>Fermi al rifornimento oltre (s): chiede se è un cambio pilota</span><span></span>
+      <input type="number" id="gpsFermoS" min="5" max="900" step="5" style="text-align:center;" onchange="gpsNumero('fermoS', this, 5, 900)">
+    </div>
+    <div class="row" style="flex-wrap:wrap;gap:8px;">
+      <button class="btn small" onclick="gpsAllineaOra()">Allinea ora al GPS</button>
+      <button class="btn small" onclick="gpsRegistraCambio()">Segna cambio pilota</button>
+      <button class="btn small" onclick="gpsAzzeraCambi()">Azzera turno pilota</button>
+      <button class="btn small" onclick="gpsCancellaZone(this)">Cancella le zone</button>
+    </div>
+    <div class="row"><span class="mono" id="gpsMsg" style="font-size:11px;color:var(--muted);line-height:1.4;"></span></div>
+    <div class="row"><span class="mono" style="font-size:11px;color:var(--muted);line-height:1.4;">Con il GPS acceso il telefono dell'auto manda la posizione e il box passa da solo tra in pista, ai box e rifornimento (serve restare nella zona circa 10 secondi). I pulsanti "In pista" e "Ai box" funzionano sempre e correggono a mano. Imposta le zone stando fermo nel punto, all'aperto.</span></div>
+  </div>
   <div class="card">
     <h3>Allarmi di gara</h3>
     <div class="row al-riga"><span>Attivi (spenti all'inizio)</span>
@@ -446,18 +485,19 @@
 <!-- Script semplici, non moduli: l'ordine di caricamento e' quello delle
      dipendenze, e le funzioni restano globali come le vogliono gli onclick
      scritti nel markup. core.js per primo, app.js per ultimo. -->
-<script src="js/core.js?v=35"></script>
-<script src="js/push.js?v=35"></script>
-<script src="js/connection.js?v=35"></script>
-<script src="js/autoview.js?v=35"></script>
-<script src="js/fuel.js?v=35"></script>
-<script src="js/boxview.js?v=35"></script>
-<script src="js/timing.js?v=35"></script>
-<script src="js/passo.js?v=35"></script>
-<script src="js/cruscotto.js?v=35"></script>
-<script src="js/race.js?v=35"></script>
-<script src="js/timer.js?v=35"></script>
-<script src="js/install.js?v=35"></script>
-<script src="js/app.js?v=35"></script>
+<script src="js/core.js?v=36"></script>
+<script src="js/push.js?v=36"></script>
+<script src="js/connection.js?v=36"></script>
+<script src="js/autoview.js?v=36"></script>
+<script src="js/fuel.js?v=36"></script>
+<script src="js/boxview.js?v=36"></script>
+<script src="js/timing.js?v=36"></script>
+<script src="js/passo.js?v=36"></script>
+<script src="js/cruscotto.js?v=36"></script>
+<script src="js/gps.js?v=36"></script>
+<script src="js/race.js?v=36"></script>
+<script src="js/timer.js?v=36"></script>
+<script src="js/install.js?v=36"></script>
+<script src="js/app.js?v=36"></script>
 </body>
 </html>

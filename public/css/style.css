@@ -370,3 +370,6 @@
 .al-riga > .toggle{justify-self:center;}
 .al-riga > input[type=number]{width:74px !important;box-sizing:border-box;}
 .al-nota{display:block;}
+
+/* GPS: domanda "era un cambio pilota?" */
+.gps-domanda{border:1px solid var(--accent,#f5c518);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:rgba(245,197,24,.12);font-size:14px;}
