@@ -450,3 +450,20 @@ body.mp-aperta{overflow:hidden;}
     #autoView.lancio .lg-gauge{min-height:56px;max-height:none;}
     #autoView.lancio .lg-cell{padding:6px 10px;}
   }
+
+/* Box: tutto quello che si tocca e' almeno 52x52 px, per i guanti (prova: tools/prove/tocchi.js).
+   Solo dentro #boxView: la vista auto resta identica (tools/prove/audit.js). */
+#boxView button, #boxView .btn, #boxView select,
+#boxView input[type=text], #boxView input[type=number], #boxView input[type=password],
+#boxView input[type=url], #boxView input[type=tel], #boxView input[type=search], #boxView input:not([type]){
+  min-height:52px; min-width:52px; box-sizing:border-box;
+}
+#boxView input[type=color]{ width:52px; height:52px; }
+#boxView input[type=range]{ min-height:52px; }
+/* interruttori: stesso disegno, ma la zona da toccare e' 54x52 */
+#boxView .toggle input{ inset:-13px -2px; }
+#boxView .qb-row{ grid-template-columns:1fr 52px; }
+/* messaggi a schermo intero: testo su tutta la riga, sotto colore, secondi, Invia, elimina */
+#boxView .flash-row{ grid-template-columns:52px 72px 1fr 52px; }
+#boxView .flash-row input[type=text]{ grid-column:1 / -1; }
+#boxView .flash-row input[type=number]{ width:auto; }
