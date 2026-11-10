@@ -29,7 +29,10 @@ Per attivare il PIN: su Render → Environment → `BOX_PIN` (numeri, 4-8 cifre)
 - **Via anticipato**: `raceTimerAutoStart` si accetta solo se il conto alla rovescia e' davvero a zero (tolleranza 3 s).
 - **Comandi solo dal box**, sempre (non piu' solo con il PIN): timer, via/stop, carburante, pulsanti, messaggi a comparsa, giorno/notte. L'auto manda solo messaggi rapidi, via/arrivo automatici, ripristino gara e GPS.
 - **Controllo dei dati** di ogni evento (carburante, pulsanti, colori, durate, percentuali); un dato strano si scarta. Ogni gestore e' protetto: un errore va nel registro e il server continua (anche `uncaughtException`).
-- **Ripristino carburante e pulsanti dopo riavvio**: vale la prima copia (i telefoni si pestavano a vicenda).
+- **Ripristino carburante dopo riavvio**: vale la copia piu' recente (ora di salvataggio) tra i box; i numeri fuori scala si riportano nei limiti invece di scartare tutto (scartare = serbatoio pieno). Pulsanti: vale la prima copia.
+- **Vista auto (su richiesta)**: "◄ cambia" esce solo con doppio tocco entro 2 s (dopo il primo tocco la scritta diventa "ancora ◄").
+- **Niente bandiere** (su richiesta): tolto il Finish dalla bandiera a scacchi di Aub, la bandiera dallo stato di Aub/ponte e la scritta "bandiera" sul box. Il Finish parte a zero del timer di gara.
+- **BOX_PIN**: non attivato (uso personale, nessun rischio).
 - **Testo dei pulsanti e dei messaggi** scritto con escape: niente codice dentro il box.
 - **socket.io servito dal nostro server** (`/socket.io/socket.io.js`), con la CDN solo come riserva.
 - Prove nuove: `riavvio.js` (24 controlli), `riavvio-client.js`, `xss.js`. Restano da fare i punti 8-15 della revisione e la tappa 2 (prove su GitHub).

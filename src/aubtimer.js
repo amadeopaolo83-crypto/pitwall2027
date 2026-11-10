@@ -285,7 +285,7 @@ function suFasi(code, payload) {
   sincronizza(code);
 }
 
-/** Bandiera di Aub: la scacchi puo' far partire il Finish (una sola volta). */
+/** NON PIU' USATA: il Finish non parte piu' dalla bandiera (regola: solo i tempi). */
 function suBandiera(code, stato) {
   const room = stanza(code);
   const prima = room.ultimaBandiera;

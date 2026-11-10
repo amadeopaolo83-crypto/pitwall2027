@@ -76,8 +76,10 @@ if (process.argv[2] === 'fase') {
       ok('fuelSystem "spazzatura" scartato', (box.emit('fuelSystemUpdate', 'spazzatura'), st.fuelSystem.tankCapacityLiters === 100));
       box.emit('fuelSystemUpdate', { tankCapacityLiters: 80, currentLiters: 40, onTrack: false });
       ok('fuelSystem valido accettato', st.fuelSystem.tankCapacityLiters === 80 && st.fuelSystem.currentLiters === 40);
-      box.emit('fuelSystemUpdate', { tankCapacityLiters: 90, currentLiters: 90, ripristino: true });
+      box.emit('fuelSystemUpdate', { tankCapacityLiters: 90, currentLiters: 90, ripristino: true, copiaAt: 1 });
       ok('ripristino carburante a server non vuoto scartato', st.fuelSystem.tankCapacityLiters === 80);
+      box.emit('fuelSystemUpdate', { tankCapacityLiters: 80, currentLiters: -3, consumptionRatePerHour: -1, onTrack: true, sessionStartAt: Date.now() - 1000, sessionStartLiters: 60 });
+      ok('carburante con numeri fuori scala: riportato nei limiti, non scartato', st.fuelSystem.currentLiters === 0 && st.fuelSystem.onTrack === true && st.fuelSystem.consumptionRatePerHour === null);
       const dur0 = st.raceTimer.raceSeconds;
       box.emit('timerRaceSet', { seconds: 'ciao' }); box.emit('timerRaceSet', { seconds: -5 }); box.emit('timerRaceSet', { seconds: 1e12 });
       ok("durata gara non valida scartata (" + st.raceTimer.raceSeconds + ")", st.raceTimer.raceSeconds === dur0);
@@ -94,6 +96,21 @@ if (process.argv[2] === 'fase') {
       ok('via anticipato (mancano 600 s) rifiutato', st.raceTimer.phase === 'start');
       Date.now.extra = 599000; auto.emit('raceTimerAutoStart');
       ok('via a zero accettato', st.raceTimer.phase === 'race');
+    }
+    if (fase === '6') {                    // server vuoto, due box con copie diverse: vince la piu' recente, anche se arriva dopo
+      const g = await join(box, 'BENZ', 'box'); const box2 = mk(); io.emit('connection', box2); await join(box2, 'BENZ', 'box');
+      const st = g.state; const ora0 = Date.now();
+      ok('benzina: server vuoto, serbatoio pieno di partenza', st.fresh.fuel === true && st.fuelSystem.currentLiters === 100);
+      const fs1 = (litri, at) => ({ tankCapacityLiters: 100, currentLiters: litri, consumptionRatePerHour: 60, onTrack: true, sessionStartAt: at - 600000, sessionStartLiters: litri + 10, ripristino: true, copiaAt: at });
+      box.emit('fuelSystemUpdate', fs1(50, ora0 - 60000));
+      ok('benzina: prima copia accettata', st.fuelSystem.currentLiters === 50);
+      box2.emit('fuelSystemUpdate', fs1(40, ora0 - 5000));
+      ok('benzina: copia piu\' recente arrivata dopo vince', st.fuelSystem.currentLiters === 40);
+      box.emit('fuelSystemUpdate', fs1(70, ora0 - 90000));
+      ok('benzina: copia piu\' vecchia non pesta', st.fuelSystem.currentLiters === 40);
+      box.emit('fuelSystemUpdate', { tankCapacityLiters: 100, currentLiters: 30, onTrack: true, sessionStartAt: ora0, sessionStartLiters: 35 });
+      box2.emit('fuelSystemUpdate', fs1(90, ora0 + 1));
+      ok('benzina: dopo un aggiornamento vero le copie non contano piu\'', st.fuelSystem.currentLiters === 30);
     }
     await archivio.svuota();
     fs.writeFileSync(process.env.ESITI, JSON.stringify(esiti));
@@ -114,6 +131,7 @@ if (process.argv[2] === 'fase') {
   console.log('--- fase 3: riavvio dopo 700 s (via passato da spento)'); lancia('3', 700);
   console.log('--- fase 4: copia del box'); lancia('4', 0);
   console.log('--- fase 5: validazione'); lancia('5', 0);
+  console.log('--- fase 6: benzina, copie dei box'); lancia('6', 0);
   console.log(male ? '\nPROVE FALLITE: ' + male : '\nTutto bene');
   process.exit(male ? 1 : 0);
 }

@@ -227,7 +227,7 @@ function applica(code, link, r) {
   const piloti = Array.isArray(r.piloti) ? r.piloti : [];
   const sess = r.sessione || {};
   const sessione = [sess.nome, sess.categoria].filter(Boolean).join(" ");
-  const bandiera = sess.bandiera ? String(sess.bandiera) : null;
+  const bandiera = null; // niente bandiere: solo i tempi
   const comune = {
     connected: true,
     error: null,

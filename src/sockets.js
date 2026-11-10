@@ -44,17 +44,20 @@ const testo = (x, max) => String(x == null ? "" : x).slice(0, max);
 const COLORE = /^#[0-9a-fA-F]{6}$/;
 const LITRI_MAX = 1000;
 
+// Carburante: la forma deve essere giusta, ma i numeri fuori scala si riportano nei limiti invece di scartare
+// tutto (scartare vorrebbe dire tornare al serbatoio pieno).
 function fuelSystemValido(f) {
   if (!f || typeof f !== "object") return null;
-  if (!eNum(f.tankCapacityLiters, 1, LITRI_MAX) || !eNum(f.currentLiters, 0, LITRI_MAX)) return null;
-  if (f.consumptionRatePerHour != null && !eNum(f.consumptionRatePerHour, 0, 1000)) return null;
-  if (f.sessionStartAt != null && !eNum(f.sessionStartAt, 0, 1e14)) return null;
-  if (!eNum(f.sessionStartLiters == null ? 0 : f.sessionStartLiters, 0, LITRI_MAX)) return null;
+  const lim = (x, min, max, def) => (typeof x === "number" && Number.isFinite(x) ? Math.min(max, Math.max(min, x)) : def);
+  if (typeof f.tankCapacityLiters !== "number" || !Number.isFinite(f.tankCapacityLiters) || f.tankCapacityLiters < 1) return null;
+  const cap = Math.min(f.tankCapacityLiters, LITRI_MAX);
+  if (typeof f.currentLiters !== "number" || !Number.isFinite(f.currentLiters)) return null;
+  const cons = lim(f.consumptionRatePerHour, 0, 1000, null);
   return {
-    tankCapacityLiters: f.tankCapacityLiters, currentLiters: f.currentLiters,
-    consumptionRatePerHour: f.consumptionRatePerHour == null ? null : f.consumptionRatePerHour,
-    onTrack: !!f.onTrack, sessionStartAt: f.sessionStartAt == null ? null : f.sessionStartAt,
-    sessionStartLiters: f.sessionStartLiters == null ? 0 : f.sessionStartLiters,
+    tankCapacityLiters: cap, currentLiters: lim(f.currentLiters, 0, LITRI_MAX, cap),
+    consumptionRatePerHour: cons ? cons : null,
+    onTrack: !!f.onTrack, sessionStartAt: lim(f.sessionStartAt, 0, 1e14, null),
+    sessionStartLiters: lim(f.sessionStartLiters, 0, LITRI_MAX, 0),
   };
 }
 
@@ -202,8 +205,16 @@ function registra(io) {
       const state = getRoomState(joinedCode);
       const fuelSystem = fuelSystemValido(dati);
       if (!fuelSystem) return;
-      // Dopo un riavvio ogni box rimanda la sua copia: vale la prima, le altre (piu' vecchie) no.
-      if (dati.ripristino && !state.fresh.fuel) return;
+      // Dopo un riavvio ogni box rimanda la sua copia: vale la piu' recente (l'ora in cui e' stata salvata).
+      // Un aggiornamento vero (non di ripristino) chiude la questione.
+      if (dati.ripristino) {
+        const quando = eNum(dati.copiaAt, 0, 1e14) ? dati.copiaAt : 0;
+        const ammesso = state.fresh.fuel || (state.fuelRipristinoAt != null && quando > state.fuelRipristinoAt);
+        if (!ammesso) return;
+        state.fuelRipristinoAt = quando;
+      } else {
+        state.fuelRipristinoAt = null;
+      }
       state.fuelSystem = fuelSystem;
       state.fresh.fuel = false;
       io.to(joinedCode).emit("fuelSystemUpdate", state.fuelSystem);

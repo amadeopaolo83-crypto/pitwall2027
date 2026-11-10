@@ -150,7 +150,7 @@ async function diagnosiCompleta(code) {
 
 function applyAubUpdate(code, payload, numero) {
   const state = getRoomState(code);
-  const flag = payload && payload.flag ? payload.flag : null;
+  const flag = null; // niente bandiere: dal live timing si usano solo i tempi
   // "Nessuna gara aperta" non e' un guasto: la squadra non ha una gara in corso
   // (o non ancora). Si dice cosi', senza far credere che i dati siano vecchi.
   const nessunaGara = Boolean(payload && payload.nessunaGara);
@@ -171,8 +171,7 @@ function applyAubUpdate(code, payload, numero) {
     stale,
     updatedAt: Date.now(),
   });
-  // La bandiera a scacchi puo' far partire il Finish del timer automatico.
-  aubtimer.suBandiera(code, flag && flag.state ? String(flag.state) : null);
+  // Il Finish parte dal timer di gara (a zero), non da una bandiera.
   // Se il flusso manda solo i vicini della categoria, posizione di categoria e vicini in
   // classifica generale vengono dalla classifica intera (/classifica), letta qui accanto.
   // Il flusso resta per la bandiera, lo stato e come ripiego se /classifica non risponde.

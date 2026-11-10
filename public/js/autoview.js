@@ -165,3 +165,17 @@ function showFlash(m){
   clearTimeout(showFlash._t);
   showFlash._t = setTimeout(()=>{ ov.hidden = true; }, (m.durationSeconds||6)*1000);
 }
+
+// Sull'auto "◄ cambia" esce dalla vista solo con un doppio tocco (entro 2 s): un tocco col guanto non basta.
+// Dopo il primo tocco la scritta diventa "ancora ◄" per due secondi, poi torna com'era.
+let cambiaRuoloTimer = null;
+function cambiaRuoloAuto(btn){
+  if(cambiaRuoloTimer){
+    clearTimeout(cambiaRuoloTimer); cambiaRuoloTimer = null;
+    btn.textContent = '\u25c4 cambia';
+    resetRole();
+    return;
+  }
+  btn.textContent = 'ancora \u25c4';
+  cambiaRuoloTimer = setTimeout(() => { cambiaRuoloTimer = null; btn.textContent = '\u25c4 cambia'; }, 2000);
+}

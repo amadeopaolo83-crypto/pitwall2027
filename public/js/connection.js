@@ -114,7 +114,7 @@ function restoreIntoFreshServer(state){
       }
       fuelSystem = saved.fs;
       state.fuelSystem = saved.fs;
-      socket.emit('fuelSystemUpdate', { ...saved.fs, ripristino: true });
+      socket.emit('fuelSystemUpdate', { ...saved.fs, ripristino: true, copiaAt: saved.at });
       const live = computeLiveLiters();
       const pct = fuelSystem.tankCapacityLiters > 0 ? Math.round((live / fuelSystem.tankCapacityLiters) * 100) : 0;
       state.fuel = { percent: pct, updatedAt: Date.now() };

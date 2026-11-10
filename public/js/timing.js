@@ -124,7 +124,6 @@ function renderAubStatus(a){
   if($('aubDriverId') && a.driverId && !$('aubDriverId').value) $('aubDriverId').value = a.driverId;
   let testo = 'Stato: ' + (a.status || '—');
   if(a.driverId) testo += ' · vettura ' + a.driverId;
-  if(a.flag && a.flag.label) testo += ' · bandiera ' + a.flag.label;
   if(a.error) testo += ' · ' + a.error;
   setAubLabel(testo, Boolean(a.error));
 }
@@ -178,7 +177,6 @@ function renderPonteStatus(f){
   if(f.eventName) testo += ' \u00b7 ' + f.eventName;
   if(f.driverNumber) testo += ' \u00b7 vettura ' + f.driverNumber;
   if(f.session) testo += ' \u00b7 ' + f.session;
-  if(f.flag) testo += ' \u00b7 bandiera ' + f.flag;
   if(f.error) testo += ' \u00b7 ' + f.error;
   setPonteLabel(testo, Boolean(f.error));
 }
