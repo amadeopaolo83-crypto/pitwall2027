@@ -10,6 +10,22 @@ const aub = require("./aub");
 const aubtimer = require("./aubtimer");
 const ponte = require("./ponte");
 const passo = require("./passo");
+const crypto = require("crypto");
+
+// PIN del box (facoltativo): se sul server c'e' la variabile BOX_PIN, chi entra come "box" deve
+// darlo, e gli eventi di comando (timer, gara, messaggi, impostazioni) li accetta solo da chi e' entrato
+// come box. Senza BOX_PIN tutto funziona come sempre. Gli eventi che l'auto manda davvero (messaggi
+// rapidi, via/arrivo automatici, ripristino dopo riavvio, GPS) restano aperti.
+const SOLO_BOX = new Set([
+  "timerStartSet", "timerStartControl", "timerControl", "timerRaceSet", "timerRaceControl", "timerSource",
+  "timerTestSpeed", "timerDebugJump", "finishConfigUpdate", "raceStart", "raceStop", "historyClear",
+  "flashMessage", "dayModeUpdate", "passoAzzera", "aubDisconnect", "ponteDisconnect",
+]);
+const pinAttivo = () => String(process.env.BOX_PIN || "");
+function pinGiusto(dato) {
+  const vero = Buffer.from(pinAttivo()), prova = Buffer.from(String(dato == null ? "" : dato));
+  return vero.length === prova.length && crypto.timingSafeEqual(vero, prova);
+}
 const keepalive = require("./keepalive");
 
 // Tempo rimanente "vero" in questo istante, dato l'ultimo valore salvato
@@ -41,8 +57,20 @@ function registra(io) {
     ]);
     socket.onAny((evento) => { if (joinedCode && SALVA.has(evento)) archivio.segna(joinedCode); });
 
-    socket.on("join", async ({ code, role } = {}, ack) => {
+    // Con il PIN attivo gli eventi di comando passano solo se chi li manda e' entrato come box.
+    if (typeof socket.use === "function") {
+      socket.use(([evento], next) => {
+        if (pinAttivo() && SOLO_BOX.has(evento) && joinedRole !== "box") return; // scartato in silenzio
+        next();
+      });
+    }
+
+    // Orologio: il telefono misura il tempo di andata e ritorno e ne ricava lo scarto dal server.
+    socket.on("ora", (ack) => { if (typeof ack === "function") ack(Date.now()); });
+
+    socket.on("join", async ({ code, role, pin } = {}, ack) => {
       if (!code || !role) return ack && ack({ ok: false, error: "codice o ruolo mancante" });
+      if (role === "box" && pinAttivo() && !pinGiusto(pin)) return ack && ack({ ok: false, error: "pin" });
       const codice = String(code).trim().toUpperCase();
       // Prima le impostazioni salvate (se la stanza non e' gia' in memoria), poi lo stato.
       try { await archivio.prepara(codice); } catch (e) { /* si parte con i valori di partenza */ }

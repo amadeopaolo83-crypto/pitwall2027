@@ -22,6 +22,7 @@ const LA_OBIETTIVO_S = 1.0;      // si vuole passare a +1 s dallo zero
 const LA_TOLLERANZA_S = 1.0;     // verde se l'arrivo e' tra 0 e +2 s
 const LA_FONDO_SCALA_S = 10;     // la fascia piena vale +-10 s
 const LA_GIRO_MIN_S = 20, LA_GIRO_MAX_S = 1200;
+const LA_ACC_GIRO_M = 15;        // nel giro di riferimento entrano solo punti piu' precisi di cosi'
 const LA_BUCO_MAX_S = 6;         // tra due punti buoni: oltre, il giro non vale come riferimento
 const LA_FERMO_MAX_S = 6;        // fermo (v < 2 m/s) piu' di cosi': giro non pulito
 const LA_FINESTRA_RITMO_S = 30;  // sugli ultimi secondi si misura il ritmo
@@ -126,6 +127,7 @@ function lancioPunto(p){
 function laAggiungi(p){
   const s = (p.t - laGiro.t0) / 1000;
   if(s <= laGiro.ultimoS) return;
+  if(p.acc != null && p.acc > LA_ACC_GIRO_M) return;   // punto poco preciso: salta (il buco poi squalifica il giro se lungo)
   if(s - laGiro.ultimoS < 0.8) return;
   if(s - laGiro.ultimoS > LA_BUCO_MAX_S) laGiro.pulito = false;
   if(Number.isFinite(p.v) && p.v < 2){

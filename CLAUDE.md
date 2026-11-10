@@ -36,6 +36,7 @@ box e auto (PWA + server Node + involucro Android). Questo repository (`Pitwall2
 - Messaggi di commit in italiano, brevi; finire con le righe di attribuzione richieste dall'ambiente.
 
 ## Da fare / aperto
+- Vedi `docs/REVISIONE.md` (difetti, architettura, evoluzione). `BOX_PIN` e' facoltativo: senza, il server si comporta come prima.
 - Prove su telefoni veri (GPS, notifiche, sirena, permessi, risparmio batteria).
 - Scraper del live timing di Claudio (materiale in arrivo).
 - Stima dei pit degli altri (giro lento rispetto al proprio ritmo, escludendo safety) e suggerimento del momento migliore per il nostro pit.

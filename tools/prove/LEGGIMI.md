@@ -9,3 +9,6 @@ e, per `srvtest2.js`, un finto modulo `web-push`.
 - `mappa1.js`, `mappa2.js`: area di rifornimento, traguardo, sposta tutto, circuito da file.
 - `audit.js`: vista auto e schermata finale identiche a pitwallnew, nessun overflow nelle schede del box.
 - `srvtest2.js`: eventi del server (foto, corsia, area, traguardo, giro di riferimento).
+- `srvpin.js`: PIN del box e comandi riservati al box (server, con finto socket).
+- `pin.js`: campo PIN nella schermata iniziale.
+- `orologio.js`: sincronizzazione dell'orologio con ritardi di rete asimmetrici.

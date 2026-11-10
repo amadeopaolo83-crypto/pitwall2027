@@ -27,6 +27,7 @@ function joinAs(chosenRole){
   localStorage.setItem('pc_server', serverUrl);
   $('btnBox').disabled = true; $('btnAuto').disabled = true;
   setLandingStatus('Connessione al server in corso…');
+  if(chosenRole === 'box' && $('boxPin') && $('boxPin').value) try{ localStorage.setItem('pc_pin', $('boxPin').value.trim()); }catch(e){}
   const joinTimeout = setTimeout(() => {
     setLandingStatus('Il server ci sta mettendo più del solito (potrebbe essersi "addormentato"): attendi ancora qualche secondo…');
   }, 8000);
@@ -36,15 +37,28 @@ function joinAs(chosenRole){
 function connect(serverUrl, joinTimeout){
   socket = io(serverUrl, { transports:['websocket','polling'] });
   socket.on('connect', () => {
-    socket.emit('join', { code, role }, (res) => {
+    let pin = '';
+    try{ pin = (role === 'box' ? (($('boxPin') && $('boxPin').value.trim()) || localStorage.getItem('pc_pin') || '') : ''); }catch(e){}
+    socket.emit('join', { code, role, pin }, (res) => {
       clearTimeout(joinTimeout);
+      if(res && res.error === 'pin'){
+        // il server vuole il PIN del box: si mostra il campo e si riprova
+        const campo = $('boxPin');
+        if(campo){ campo.hidden = false; campo.focus(); }
+        try{ localStorage.removeItem('pc_pin'); }catch(e){}
+        setLandingStatus('Serve il PIN del box.', true);
+        $('btnBox').disabled = false; $('btnAuto').disabled = false;
+        try{ socket.disconnect(); }catch(e){}
+        return;
+      }
       if(!res || !res.ok){
         setLandingStatus('Errore durante il collegamento, riprova.', true);
         $('btnBox').disabled = false; $('btnAuto').disabled = false;
         return;
       }
       setLandingStatus('');
-      if(res.serverNow) clockOffset = res.serverNow - Date.now();
+      if(res.serverNow) clockOffset = res.serverNow - Date.now();   // prima stima (grezza)
+      sincronizzaOrologio(6);                                       // poi si affina con il tempo di andata e ritorno
       applyState(res.state);
       $('landing').hidden = true;
       if(role === 'auto') enterAutoView(); else enterBoxView();
@@ -62,6 +76,28 @@ function connect(serverUrl, joinTimeout){
 // rapidi e gara in corso. Ogni voce vale una sola volta: appena un dispositivo
 // la rimanda, il server smette di considerarla vuota. Ritorna true se ha
 // ripristinato il carburante.
+// Orologio sincronizzato: si manda qualche "ora?" al server, si tiene la risposta con il tempo di
+// andata e ritorno piu' breve (e' la piu' precisa) e se ne ricava lo scarto. Si ripete ogni minuto.
+let orologioMigliore = null;   // { rtt, offset }
+let orologioVolte = 0;
+function sincronizzaOrologio(n){
+  if(!socket || !socket.connected) return;
+  const una = () => {
+    const t0 = Date.now();
+    socket.emit('ora', (tServer) => {
+      const t1 = Date.now(), rtt = t1 - t0;
+      if(!Number.isFinite(tServer) || rtt < 0 || rtt > 3000) return;
+      const offset = tServer - (t0 + t1) / 2;
+      // si tiene la misura migliore, ma una vecchia si scarta dopo qualche giro (la rete cambia)
+      if(!orologioMigliore || rtt <= orologioMigliore.rtt || orologioVolte - orologioMigliore.volta > 8) orologioMigliore = { rtt, offset, volta: orologioVolte };
+      orologioVolte++;
+      clockOffset = orologioMigliore.offset;
+    });
+  };
+  for(let i = 0; i < (n || 1); i++) setTimeout(una, i * 300);
+}
+setInterval(() => { try{ sincronizzaOrologio(3); }catch(e){} }, 60000);
+
 function restoreIntoFreshServer(state){
   const fresh = state.fresh || {};
   let fuelRestored = false;
