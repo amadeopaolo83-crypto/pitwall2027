@@ -30,9 +30,9 @@ jobs:
       - name: Dipendenze del server
         run: npm install --no-audit --no-fund
 
-      - name: Playwright con Chromium
+      - name: Playwright con Chromium e socket.io-client
         run: |
-          npm install --no-save --no-audit --no-fund playwright@1.63.0
+          npm install --no-save --no-audit --no-fund playwright@1.63.0 socket.io-client@4.8.1
           npx playwright install --with-deps chromium
 
       - name: Copia di pitwallnew (solo lettura, per audit.js)

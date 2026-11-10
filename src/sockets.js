@@ -120,11 +120,15 @@ function registra(io) {
       "aubConnect", "ponteConnect", "gpsConfigUpdate", "gpsGiroRif",
       "timerStartControl", "timerControl", "timerRaceControl", "raceTimerAutoStart", "finishTrigger", "timerDebugJump", "timerRestore",
     ]);
-    socket.onAny((evento) => {
+    const registraEvento = (evento) => {
       if (!joinedCode) return;
       if (TIMER_EVENTI.has(evento)) getRoomState(joinedCode).fresh.timer = false;   // il timer e' stato toccato: la copia dei telefoni non serve piu'
       if (SALVA.has(evento)) archivio.segna(joinedCode);
-    });
+    };
+    // In socket.io gli ascoltatori onAny girano PRIMA dei filtri socket.use: per questo la registrazione sta
+    // dentro il filtro qui sotto, dopo i controlli, e un evento scartato (auto, secondario) non lascia tracce.
+    // onAny resta solo per chi non ha socket.use (finti socket di alcune prove).
+    if (typeof socket.use !== "function") socket.onAny(registraEvento);
 
     // Gli eventi di comando passano solo se chi li manda e' entrato come box.
     if (typeof socket.use === "function") {
@@ -141,6 +145,7 @@ function registra(io) {
             return;
           }
         }
+        registraEvento(evento);
         next();
       });
     }

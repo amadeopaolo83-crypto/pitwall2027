@@ -60,6 +60,14 @@ Per attivare il PIN: su Render → Environment → `BOX_PIN` (numeri, 4-8 cifre)
 - Solo il primario decide il GPS (in pista / ai box / rifornimento) e apre la domanda del cambio pilota; il secondario mostra lo stato. Il secondario che prova un comando riservato vede un avviso.
 - Lo stato dei ruoli e' in memoria: dopo un riavvio del server il primo che rientra e' primario. Prove: `doppio.js`, `doppio-client.js`.
 
+### Doppio box con il server vero (prova `doppio-vero.js`)
+- Server vero (`node src/server.js`, `DOPPIO_BOX=1`) e `socket.io-client`, 2 box + 1 auto: i 28 comandi `SOLO_PRIMARIO`
+  sono negati al secondario (con `boxNegato` e ack `ok:false`), cedi / riprendi / prendi e il primario perso per 20 s funzionano.
+- **Difetto trovato e corretto**: in socket.io gli ascoltatori `onAny` girano *prima* dei filtri `socket.use`. Un evento
+  scartato (auto o secondario) spegneva comunque `fresh.timer` (dopo un riavvio il box non avrebbe piu' rimandato il suo
+  timer) e faceva salvare l'archivio. Ora la registrazione sta dentro il filtro, dopo i controlli.
+- Da sapere: un box rimasto solo comanda subito (anche nei 20 s); i 20 s decidono chi e' primario quando l'altro rientra.
+
 ## 3. Architettura: tre strade
 - **A (consigliata, poco lavoro):** restare cosi', attivare `BOX_PIN`, configurare l'archivio (Upstash) anche su Pitwall2027, passare Render a un piano che non si addormenta. Costo: pochi euro al mese e mezz'ora.
 - **B (media):** salvare ogni 30-60 s uno "snapshot" della gara (timer, carburante, giri, passo, ultimo stato in pista/box) nell'archivio, cosi' un riavvio di Render e' invisibile. Costo: uno o due giorni di lavoro e prove. Vale la pena prima della prossima 24 ore.

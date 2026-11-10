@@ -27,3 +27,7 @@ Le schermate vanno nella cartella temporanea (`pitcomm-prove`) o in `PROVE_OUT`.
 - `tutte.js`: le esegue tutte e fa il riepilogo.
 - `doppio.js`: doppio box sul server (ruoli, comandi riservati, cedi priorita', scadenza, scollegamento, cambio pilota condiviso).
 - `doppio-client.js`: barra PRIMARIO/SECONDARIO, doppio tocco, cedi priorita', GPS e cambio pilota sul telefono.
+- `doppio-vero.js`: doppio box con il server vero (`node src/server.js`, `DOPPIO_BOX=1`) e `socket.io-client`, 2 box + 1 auto:
+  comandi `SOLO_PRIMARIO` negati al secondario (elenco letto da `sockets.js`), cedi / riprendi / prendi, ricollegamento,
+  primario perso per 20 s, eventi scartati senza tracce (`fresh.timer`, archivio). Serve
+  `npm install --no-save socket.io-client@4`; dura circa 30 s.

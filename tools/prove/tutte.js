@@ -10,6 +10,8 @@ const path = require('path');
 const TUTTE = [
   // server, con finti socket
   'srvtest2', 'srvpin', 'riavvio', 'doppio',
+  // server vero (node src/server.js) con socket.io-client
+  'doppio-vero',
   // pagina nel browser (Playwright), con finto socket
   'orologio', 'pin', 'riavvio-client', 'doppio-client', 'xss', 'cambia', 'gps3', 'lancio1', 'mappa1', 'mappa2', 'tocchi',
   // involucro Android: controlli sui sorgenti (la compilazione la fa android.yml)
