@@ -21,7 +21,7 @@ const GPS_USCITA_EXTRA = 5;    // metri in piu' per uscire da una zona in cui si
 const GPS_FERMO_M = 6;         // metri: entro tanto dal punto di sosta si considera fermo
 const GPS_PASSO_REG_M = 3;     // registrazione corsia: un punto ogni tanti metri
 
-let gpsCfg = { on: false, box: null, refuel: null, refuelPoly: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 60 };
+let gpsCfg = { on: false, box: null, refuel: null, refuelPoly: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 60, traguardo: null, giroRif: null, lancioS: 240 };
 let gpsUltima = null;          // ultimo punto ricevuto { lat, lng, acc, t }
 let gpsUltimaBuona = 0;        // quando e' arrivato l'ultimo punto preciso
 let gpsStato = null;           // 'pista' | 'box' | 'rifornimento' (confermato)
@@ -51,7 +51,7 @@ function gpsDistanza(a, b){
 // Il box si tiene una copia delle zone: se il server riparte a meta' gara (Render) gliele rimanda.
 function gpsSalvaCopia(){
   if(role !== 'box') return;
-  const vuota = !gpsCfg.box && !gpsCfg.refuel && !gpsCfg.refuelPoly && !gpsCfg.corsia;
+  const vuota = !gpsCfg.box && !gpsCfg.refuel && !gpsCfg.refuelPoly && !gpsCfg.corsia && !gpsCfg.traguardo && !gpsCfg.giroRif;
   save('pc_gps_cfg', { code, cfg: vuota ? null : gpsCfg });
 }
 
@@ -102,6 +102,10 @@ function gpsAggiornaInvio(){
   const deveInviare = role === 'auto' && gpsCfg.on && navigator.geolocation;
   if(deveInviare && gpsWatch === null){
     gpsWatch = navigator.geolocation.watchPosition((pos) => {
+      // fascia di lancio: usa tutti i punti, con l'istante del GPS portato sul tempo sincronizzato
+      if(typeof lancioPunto === 'function'){
+        try{ lancioPunto({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy, v: pos.coords.speed, t: (pos.timestamp || Date.now()) + clockOffset }); }catch(e){}
+      }
       const ora = Date.now();
       if(ora - gpsInvioUltimo < 1000) return;
       gpsInvioUltimo = ora;
@@ -174,6 +178,14 @@ function gpsRegistraCorsia(btn){
 }
 
 let gpsCancellaPronto = false;
+let gpsGiroPronto = false;
+function gpsCancellaGiroRif(btn){
+  if(!gpsCfg.giroRif) return;
+  if(!gpsGiroPronto){ gpsGiroPronto = true; btn.textContent = 'Tocca ancora per cancellare'; setTimeout(() => { gpsGiroPronto = false; btn.textContent = 'Cancella giro di riferimento'; }, 4000); return; }
+  gpsGiroPronto = false; btn.textContent = 'Cancella giro di riferimento';
+  gpsInvia({ giroRif: null });
+}
+
 function gpsCancellaZone(btn){
   if(!gpsCancellaPronto){
     gpsCancellaPronto = true;
@@ -344,6 +356,8 @@ function gpsAzzeraCambi(){
 
 // ---------- schermo del box ----------
 
+function gpsFmtGiro(s){ const d = Math.round(s * 10); const m = Math.floor(d / 600); const r = (d - m * 600) / 10; return m + ':' + (r < 10 ? '0' : '') + r.toFixed(1); }
+
 function gpsMinSec(ms){
   const s = Math.max(0, Math.floor(ms / 1000));
   return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
@@ -379,7 +393,8 @@ function gpsRender(){
   if($('gpsMappaBtn')) $('gpsMappaBtn').hidden = !gpsCfg.on;
   if($('gpsApplica')) $('gpsApplica').checked = gpsApplica();
   const f = (id, v) => { const e = $(id); if(e && document.activeElement !== e) e.value = v; };
-  f('gpsRBox', gpsCfg.rBox); f('gpsRRefuel', gpsCfg.rRefuel); f('gpsFermoS', gpsCfg.fermoS); f('gpsLarg', gpsCfg.larg);
+  f('gpsLancioS', gpsCfg.lancioS); f('gpsRBox', gpsCfg.rBox); f('gpsRRefuel', gpsCfg.rRefuel); f('gpsFermoS', gpsCfg.fermoS); f('gpsLarg', gpsCfg.larg);
+  if($('gpsLancio')) $('gpsLancio').textContent = 'Fascia di lancio: traguardo ' + (gpsCfg.traguardo ? 'impostato (' + Math.round(gpsDistanza(gpsCfg.traguardo[0], gpsCfg.traguardo[1])) + ' m)' : 'non impostato') + ' \u00b7 giro di riferimento ' + (gpsCfg.giroRif ? gpsFmtGiro(gpsCfg.giroRif.t) : 'non registrato') + (gpsCfg.traguardo && gpsCfg.giroRif ? ' \u00b7 pronta' : ' \u00b7 non pronta');
   if($('gpsZone')) $('gpsZone').textContent = 'Zona box: ' + (gpsCfg.box ? 'impostata' : 'non impostata') + ' \u00b7 Rifornimento: ' + (gpsCfg.refuelPoly ? 'area (' + gpsCfg.refuelPoly.length + ' punti)' : gpsCfg.refuel ? 'cerchio' : 'non impostato') + ' \u00b7 Corsia box: ' + (gpsCfg.corsia ? 'registrata (' + Math.round(gpsLunghezza(gpsCfg.corsia)) + ' m)' : 'non registrata');
 }
 

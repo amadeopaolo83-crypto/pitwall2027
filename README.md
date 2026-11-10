@@ -44,3 +44,14 @@ Il box la carica da Timing → Finish → **Carica foto finale** (si sceglie dal
 a 1280 px e vale per tutta la squadra; **Foto predefinita** la toglie. Senza foto caricata: la stanza `FLATSIX` mostra
 `public/finish-photo.jpg`, le altre stanze lo sfondo scuro. La foto si serve da `/foto-finale/CODICE` e si salva con le
 altre impostazioni (stessa cartella o Redis, chiave a parte).
+
+## Partenza lanciata: fascia di lancio, traguardo e circuito
+
+Solo Pitwall2027, solo con GPS acceso. Obiettivo: durante il riscaldamento passare il traguardo appena dopo lo zero del conto alla rovescia (da 0 a +2 s, obiettivo +1 s). Passare prima dello zero fa perdere il giro.
+- **Traguardo virtuale**: mappa → **Traguardo**, due estremi da un lato all'altro della pista (3–400 m).
+- **Giro di riferimento**: lo registra da solo il telefono dell'auto passando sulla linea; vale un giro pulito (senza box, rifornimento, corsia o soste). Si tiene il piu' veloce; il box lo vede in azzurro sulla mappa e lo puo' cancellare dalle impostazioni. Si salva con le altre impostazioni e nel file circuito.
+- **Fascia in auto**: negli ultimi `lancioS` secondi (240 di partenza, impostabile) prima dello zero, e solo se traguardo e giro di riferimento esistono, al posto di passo, carburante e tasti compare la fascia: a sinistra rossa = rallenta (arriveresti prima dello zero), a destra gialla = accelera, al centro verde = giro perfetto. Fondo scala ±10 s; "fuori portata" se la correzione supererebbe il 20%. Senza GPS compare "Posizione GPS non disponibile". Fuori da queste condizioni la vista auto e' identica a prima.
+- **Come stima**: interpola il passaggio tra due punti GPS, proietta la posizione sul giro di riferimento, misura il ritmo sugli ultimi 30 s e sceglie il passaggio sulla linea che richiede la correzione relativa minore. Provato in simulazione: errore sotto ~1 s con rumore GPS di ±1,5 m.
+- **Sposta**: se il satellite e' sfalsato rispetto al GPS, mappa → **Sposta** porta in blocco box, rifornimento, corsia e traguardo (passi 0,5 / 2 / 10 m). Il giro di riferimento non si sposta (viene dal GPS).
+- **Circuito**: mappa → **Circuito** salva tutto in un file `.json` (o copia il testo) e lo ricarica in qualunque stanza, anche preparato dal PC prima della gara. Non accende il GPS. Su APK il download dal telefono puo' non partire: usa "Copia come testo" / "Carica da testo".
+- Server: `traguardo`, `giroRif`, `lancioS` dentro `gpsConfigUpdate`; l'auto manda `gpsGiroRif` (al massimo uno ogni 20 s, solo con GPS acceso e traguardo impostato).

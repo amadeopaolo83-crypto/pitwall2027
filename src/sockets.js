@@ -37,7 +37,7 @@ function registra(io) {
     const SALVA = new Set([
       "fuelSystemUpdate", "autonomyUpdate", "dayModeUpdate", "quickButtonsUpdate", "flashPresetsUpdate",
       "timingViewUpdate", "autoLayoutUpdate", "sogliaGapUpdate", "timerStartSet", "timerRaceSet", "finishConfigUpdate",
-      "aubConnect", "ponteConnect", "gpsConfigUpdate",
+      "aubConnect", "ponteConnect", "gpsConfigUpdate", "gpsGiroRif",
     ]);
     socket.onAny((evento) => { if (joinedCode && SALVA.has(evento)) archivio.segna(joinedCode); });
 
@@ -233,6 +233,23 @@ function registra(io) {
       if (!joinedCode || joinedRole !== "box" || !dati || typeof dati !== "object") return;
       const state = getRoomState(joinedCode);
       state.gps = archivio.pulisciGps(state.gps, dati);
+      state.fresh.gps = false;
+      io.to(joinedCode).emit("gpsConfigUpdate", state.gps);
+    });
+
+    // AUTO -> tutti: giro di riferimento registrato dall'auto passando sul traguardo virtuale
+    // (solo con il GPS acceso, al massimo uno ogni 20 secondi).
+    let ultimoGiroRif = 0;
+    socket.on("gpsGiroRif", (dati) => {
+      if (!joinedCode || joinedRole !== "auto" || !dati || typeof dati !== "object") return;
+      const state = getRoomState(joinedCode);
+      if (!state.gps.on || !state.gps.traguardo) return;
+      const ora = Date.now();
+      if (ora - ultimoGiroRif < 20000) return;
+      const prima = state.gps.giroRif;
+      state.gps = archivio.pulisciGps(state.gps, { giroRif: dati });
+      if (state.gps.giroRif === prima) return; // forma non valida: scartato
+      ultimoGiroRif = ora;
       state.fresh.gps = false;
       io.to(joinedCode).emit("gpsConfigUpdate", state.gps);
     });

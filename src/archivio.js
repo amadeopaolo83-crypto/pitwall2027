@@ -165,6 +165,22 @@ function pulisciGps(attuali, d) {
   }
   if (Number.isFinite(d.larg) && d.larg >= 2 && d.larg <= 40) g.larg = d.larg;
   if (Number.isFinite(d.fermoS) && d.fermoS >= 5 && d.fermoS <= 900) g.fermoS = Math.round(d.fermoS);
+  // traguardo virtuale: una linea di due punti (3..400 m)
+  if (d.traguardo === null) g.traguardo = null;
+  else if (Array.isArray(d.traguardo) && d.traguardo.length === 2 && d.traguardo.every(punto)) {
+    const [a, b] = d.traguardo;
+    const m = Math.hypot((b.lat - a.lat) * 111320, (b.lng - a.lng) * 111320 * Math.cos(a.lat * Math.PI / 180));
+    if (m >= 3 && m <= 400) g.traguardo = [{ lat: a.lat, lng: a.lng }, { lat: b.lat, lng: b.lng }];
+  }
+  // giro di riferimento: durata in secondi e punti [lat, lng, secondi dalla linea] in ordine di tempo
+  if (d.giroRif === null) g.giroRif = null;
+  else if (d.giroRif && typeof d.giroRif === "object" && Number.isFinite(d.giroRif.t) && d.giroRif.t >= 20 && d.giroRif.t <= 1200
+    && Array.isArray(d.giroRif.p) && d.giroRif.p.length >= 10 && d.giroRif.p.length <= 900) {
+    const ok = d.giroRif.p.every((q, i, a) => Array.isArray(q) && q.length === 3 && q.every(Number.isFinite)
+      && Math.abs(q[0]) <= 90 && Math.abs(q[1]) <= 180 && q[2] >= 0 && q[2] <= d.giroRif.t + 1 && (i === 0 || q[2] >= a[i - 1][2]));
+    if (ok) g.giroRif = { t: Math.round(d.giroRif.t * 100) / 100, p: d.giroRif.p.map((q) => [Math.round(q[0] * 1e6) / 1e6, Math.round(q[1] * 1e6) / 1e6, Math.round(q[2] * 100) / 100]) };
+  }
+  if (Number.isFinite(d.lancioS) && d.lancioS >= 60 && d.lancioS <= 900) g.lancioS = Math.round(d.lancioS);
   return g;
 }
 

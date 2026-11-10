@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<link rel="stylesheet" href="css/style.css?v=38" />
+<link rel="stylesheet" href="css/style.css?v=39" />
 </head>
 <body>
 
@@ -47,6 +47,20 @@
       <div class="lbl">PARTENZA IN</div>
       <span class="mono" id="timerStartBannerDisplay" style="font-size:56px;font-weight:700;color:var(--yellow);">—</span>
     </div>
+  </div>
+  <div id="lancioGuida" class="lancio-guida" hidden>
+    <div class="lg-verdict"><div class="cmd ok" id="lancioCmd">Giro perfetto</div><div class="val mono" id="lancioVal"></div></div>
+    <div class="lg-gauge" role="img" aria-label="Fascia di guida: sinistra rallenta, destra accelera">
+      <div class="lg-half l"><div class="lg-fill" id="lancioFl"></div></div>
+      <div class="lg-half r"><div class="lg-fill" id="lancioFr"></div></div>
+      <div class="lg-win"></div><div class="lg-mid"></div>
+    </div>
+    <div class="lg-axis"><span class="a">&#9668; Rallenta</span><span class="b">Accelera &#9658;</span></div>
+    <div class="lg-info">
+      <div class="lg-cell"><span class="lbl">Linea utile tra</span><b class="mono" id="lancioLinea">—</b></div>
+      <div class="lg-cell"><span class="lbl">Arrivo previsto</span><b class="mono" id="lancioArr">—</b></div>
+    </div>
+    <div class="lg-msg" id="lancioMsg"></div>
   </div>
   <div class="timing-strip split" id="timingStrip">
     <div class="timing-left">
@@ -435,6 +449,16 @@
       <input type="number" id="gpsFermoS" min="5" max="900" step="5" style="text-align:center;" onchange="gpsNumero('fermoS', this, 5, 900)">
     </div>
     <div class="row gps-griglia">
+      <button class="btn small" onclick="mappaApri('traguardo')">Traguardo virtuale</button>
+      <button class="btn small" onclick="mappaApri('circuito')">Circuito (file)</button>
+      <button class="btn small" onclick="mappaApri('sposta')">Sposta tutte le zone</button>
+      <button class="btn small" onclick="gpsCancellaGiroRif(this)">Cancella giro di riferimento</button>
+    </div>
+    <div class="row"><span class="mono" id="gpsLancio" style="font-size:12px;">Fascia di lancio: —</span></div>
+    <div class="row val-riga"><span>Fascia di lancio in auto: da quanti secondi prima dello zero</span>
+      <input type="number" id="gpsLancioS" min="60" max="900" step="10" style="text-align:center;" onchange="gpsNumero('lancioS', this, 60, 900)">
+    </div>
+    <div class="row gps-griglia">
       <button class="btn small" onclick="gpsAllineaOra()">Allinea ora al GPS</button>
       <button class="btn small" onclick="gpsRegistraCambio()">Segna cambio pilota</button>
       <button class="btn small" onclick="gpsAzzeraCambi()">Azzera turno pilota</button>
@@ -512,25 +536,30 @@
     <button class="tab" data-modo="box" onclick="mpVaiA('box')">Box</button>
     <button class="tab" data-modo="rifornimento" onclick="mpVaiA('rifornimento')">Rifornim.</button>
     <button class="tab" data-modo="corsia" onclick="mpVaiA('corsia')">Corsia</button>
+    <button class="tab" data-modo="traguardo" onclick="mpVaiA('traguardo')">Traguardo</button>
+    <button class="tab" data-modo="sposta" onclick="mpVaiA('sposta')">Sposta</button>
+    <button class="tab" data-modo="circuito" onclick="mpVaiA('circuito')">Circuito</button>
   </div>
   <div id="mpCanvas"></div>
   <div class="mp-info mono" id="mpInfo"></div>
   <div class="mp-panel" id="mpPannello"></div>
+  <input type="file" id="mpFile" accept=".json,application/json,text/plain" hidden onchange="mpCircuitoDaFile(this)">
 </div>
-<script src="js/core.js?v=38"></script>
-<script src="js/push.js?v=38"></script>
-<script src="js/connection.js?v=38"></script>
-<script src="js/autoview.js?v=38"></script>
-<script src="js/fuel.js?v=38"></script>
-<script src="js/boxview.js?v=38"></script>
-<script src="js/timing.js?v=38"></script>
-<script src="js/passo.js?v=38"></script>
-<script src="js/cruscotto.js?v=38"></script>
-<script src="js/gps.js?v=38"></script>
-<script src="js/mappa.js?v=38"></script>
-<script src="js/race.js?v=38"></script>
-<script src="js/timer.js?v=38"></script>
-<script src="js/install.js?v=38"></script>
-<script src="js/app.js?v=38"></script>
+<script src="js/core.js?v=39"></script>
+<script src="js/push.js?v=39"></script>
+<script src="js/connection.js?v=39"></script>
+<script src="js/autoview.js?v=39"></script>
+<script src="js/fuel.js?v=39"></script>
+<script src="js/boxview.js?v=39"></script>
+<script src="js/timing.js?v=39"></script>
+<script src="js/passo.js?v=39"></script>
+<script src="js/cruscotto.js?v=39"></script>
+<script src="js/gps.js?v=39"></script>
+<script src="js/lancio.js?v=39"></script>
+<script src="js/mappa.js?v=39"></script>
+<script src="js/race.js?v=39"></script>
+<script src="js/timer.js?v=39"></script>
+<script src="js/install.js?v=39"></script>
+<script src="js/app.js?v=39"></script>
 </body>
 </html>

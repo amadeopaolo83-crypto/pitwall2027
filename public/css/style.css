@@ -409,3 +409,33 @@ body.mp-aperta{overflow:hidden;}
 .mp .leaflet-tooltip.mp-et{background:rgba(11,13,15,.78);color:#fff;border:none;box-shadow:none;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 6px;}
 .mp .leaflet-tooltip.mp-et:before{display:none;}
 @media (max-width:380px){ .box-tabs .tab{font-size:11px;letter-spacing:-.1px;} }
+
+  /* ---------- fascia di lancio (auto, solo se GPS+traguardo+giro di riferimento e mancano pochi minuti allo zero) ---------- */
+  #autoView.lancio .passo-box, #autoView.lancio .fuel-refuel-row, #autoView.lancio .quick-grid{display:none!important;}
+  .lancio-guida{flex:1;display:flex;flex-direction:column;gap:12px;padding:14px 16px 16px;}
+  .lg-verdict{display:flex;align-items:baseline;justify-content:space-between;gap:12px;min-height:56px;}
+  .lg-verdict .cmd{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:clamp(30px,9vw,46px);line-height:1;}
+  .lg-verdict .cmd.slow{color:var(--red);} .lg-verdict .cmd.fast{color:var(--yellow);} .lg-verdict .cmd.ok{color:var(--green);}
+  .lg-verdict .val{font-weight:700;font-size:clamp(18px,5.5vw,28px);text-align:right;}
+  .lg-gauge{position:relative;flex:1;min-height:96px;max-height:160px;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+  .lg-half{position:absolute;top:0;bottom:0;width:50%;}
+  .lg-half.l{left:0;} .lg-half.r{right:0;}
+  .lg-fill{position:absolute;top:0;bottom:0;width:0;transition:width .3s ease;}
+  .lg-half.l .lg-fill{right:0;background:var(--red);}
+  .lg-half.r .lg-fill{left:0;background:var(--yellow);}
+  .lg-fill.good{background:var(--green)!important;}
+  .lg-win{position:absolute;top:0;bottom:0;left:45%;width:10%;border-left:2px solid #ffffff55;border-right:2px solid #ffffff55;background:#3ECF6E1f;pointer-events:none;}
+  .lg-mid{position:absolute;top:0;bottom:0;left:50%;width:3px;margin-left:-1.5px;background:var(--text);pointer-events:none;}
+  .lg-axis{display:flex;justify-content:space-between;font-family:'Oswald',sans-serif;letter-spacing:.1em;text-transform:uppercase;font-size:13px;}
+  .lg-axis .a{color:var(--red);} .lg-axis .b{color:var(--yellow);}
+  .lg-info{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .lg-cell{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px;display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .lg-cell .lbl{font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;}
+  .lg-cell b{font-size:clamp(20px,6vw,26px);font-weight:700;}
+  .lg-msg{display:none;text-align:center;color:var(--muted);font-family:'Oswald',sans-serif;letter-spacing:.1em;text-transform:uppercase;font-size:18px;padding:10px 0;}
+  .lancio-guida.senza .lg-verdict, .lancio-guida.senza .lg-gauge, .lancio-guida.senza .lg-axis, .lancio-guida.senza .lg-info{display:none;}
+  .lancio-guida.senza .lg-msg{display:block;padding:40px 0;}
+
+  .mp-modi{display:flex;flex-wrap:wrap;gap:6px;}
+  .mp-modi .tab{flex:1 1 22%;border:1px solid var(--line)!important;border-radius:8px!important;}
+  .mp-testo{width:100%;margin-bottom:8px;background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:11px;resize:vertical;}
