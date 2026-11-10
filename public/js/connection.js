@@ -114,7 +114,7 @@ function restoreIntoFreshServer(state){
       }
       fuelSystem = saved.fs;
       state.fuelSystem = saved.fs;
-      socket.emit('fuelSystemUpdate', saved.fs);
+      socket.emit('fuelSystemUpdate', { ...saved.fs, ripristino: true });
       const live = computeLiveLiters();
       const pct = fuelSystem.tankCapacityLiters > 0 ? Math.round((live / fuelSystem.tankCapacityLiters) * 100) : 0;
       state.fuel = { percent: pct, updatedAt: Date.now() };
@@ -125,7 +125,7 @@ function restoreIntoFreshServer(state){
 
   if(fresh.buttons && localStorage.getItem('pc_qb')){
     state.quickButtons = quickButtons;
-    socket.emit('quickButtonsUpdate', { buttons: quickButtons });
+    socket.emit('quickButtonsUpdate', { buttons: quickButtons, ripristino: true });
   }
 
   if(fresh.race){
@@ -133,6 +133,15 @@ function restoreIntoFreshServer(state){
     if(r && r.code === code && r.active && r.startedAt){
       socket.emit('raceRestore', { startedAt: r.startedAt });
     }
+  }
+
+  // Timer che scorreva: lo rimanda il box, se il server e' ripartito da zero. Vale solo se la copia
+  // ha qualcosa in corso (gara, conto alla rovescia acceso o arrivo), per non rimettere un vecchio test.
+  timerServerFresco = !!fresh.timer;
+  if(fresh.timer && role === 'box'){
+    const c = load('pc_timer', null);
+    const t = c && c.code === code ? c.t : null;
+    if(t && (t.phase !== 'start' || t.startRunning || t.raceRunning)) socket.emit('timerRestore', t);
   }
 
   // Timer automatico (Aub): se il box lo usava, dopo un riavvio torna da solo.
@@ -277,7 +286,7 @@ function registerListeners(){
   socket.on('timingUpdate', () => { timingRicevutoAt = Date.now(); });
   socket.on('aubStatus', (a) => { aubStatoUltimo = a; });
   socket.on('ponteStatus', (f) => { ponteStatoUltimo = f; });
-  socket.on('timerUpdate', applyTimerState);
+  socket.on('timerUpdate', (t) => { timerServerFresco = false; applyTimerState(t); });
 }
 
 // Quando la pagina torna visibile (per esempio dopo lo schermo spento) il telefono

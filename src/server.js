@@ -23,6 +23,10 @@ const ponte = require("./ponte");
 const passo = require("./passo");
 const sockets = require("./sockets");
 
+// Un errore non previsto si scrive nel registro e il server continua: in gara non deve cadere.
+process.on("uncaughtException", (e) => console.error("[errore non gestito]", e && e.stack || e));
+process.on("unhandledRejection", (e) => console.error("[promessa rifiutata]", e && e.stack || e));
+
 const httpServer = http.createServer(serviRichiesta);
 
 const io = new Server(httpServer, {

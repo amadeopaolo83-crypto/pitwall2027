@@ -54,8 +54,8 @@ function renderQbEditor(){
     const row = document.createElement('div');
     row.className = 'qb-row';
     row.innerHTML = `
-      <input type="text" value="${b.label}" oninput="quickButtons[${i}].label=this.value">
-      <input type="color" value="${b.color}" oninput="quickButtons[${i}].color=this.value">`;
+      <input type="text" value="${esc(b.label)}" oninput="quickButtons[${i}].label=this.value">
+      <input type="color" value="${coloreOk(b.color, '#3fa9f5')}" oninput="quickButtons[${i}].color=this.value">`;
     el.appendChild(row);
   });
 }
@@ -73,9 +73,9 @@ function renderFlashEditor(){
     const row = document.createElement('div');
     row.className = 'flash-row';
     row.innerHTML = `
-      <input type="text" value="${p.text}" oninput="flashPresets[${i}].text=this.value;flashSalva()">
-      <input type="color" value="${p.color}" oninput="flashPresets[${i}].color=this.value;flashSalva()">
-      <input type="number" value="${p.duration}" min="2" max="60" oninput="flashPresets[${i}].duration=+this.value;flashSalva()" title="secondi">
+      <input type="text" value="${esc(p.text)}" oninput="flashPresets[${i}].text=this.value;flashSalva()">
+      <input type="color" value="${coloreOk(p.color, '#2FB6C4')}" oninput="flashPresets[${i}].color=this.value;flashSalva()">
+      <input type="number" value="${Number(p.duration) || 6}" min="2" max="60" oninput="flashPresets[${i}].duration=+this.value;flashSalva()" title="secondi">
       <button class="btn small primary" onclick="sendFlashPreset(${i}, this)">Invia</button>
       <button class="btn small" onclick="eliminaFlashPreset(${i}, this)" title="Elimina" aria-label="Elimina messaggio">\u2715</button>`;
     el.appendChild(row);

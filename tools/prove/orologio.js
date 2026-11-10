@@ -6,6 +6,7 @@ const srv = http.createServer((q, s) => { let p = decodeURIComponent(q.url.split
 srv.listen(8778, async () => {
   const b = await chromium.launch(); const pg = await b.newPage();
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
+  await pg.route('**/socket.io/socket.io.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.io=()=>({on(){},emit(){},connected:true,onAny(){}});' }));
   await pg.route('**/socket.io.min.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.io=()=>({on(){},emit(){},connected:true,onAny(){}});' }));
   await pg.route(/fonts\.(googleapis|gstatic)/, (r) => r.abort());
   await pg.goto('http://localhost:8778/');

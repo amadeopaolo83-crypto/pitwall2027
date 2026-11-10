@@ -141,8 +141,49 @@ function istantanea(S) {
       startSeconds: t.startSeconds, raceSeconds: t.raceSeconds,
       finishMode: t.finishMode, finishBackground: t.finishBackground, finishDriverName: t.finishDriverName,
     },
+    // il timer che scorre: fase, tempi rimasti e da quando (ore assolute, valgono anche dopo un riavvio)
+    timer: fotoTimer(t),
     collegamenti: S.collegamenti,
   };
+}
+
+// ---------- timer di partenza e di gara: salvataggio e ripristino ----------
+
+const TIMER_VALIDO_MS = 36 * 3600 * 1000;   // una copia piu' vecchia di cosi' e' di un'altra gara
+
+function fotoTimer(t) {
+  return {
+    phase: t.phase, startSeconds: t.startSeconds, raceSeconds: t.raceSeconds,
+    startRemaining: t.startRemaining, startRunning: !!t.startRunning, startUpdatedAt: t.startUpdatedAt,
+    raceRemaining: t.raceRemaining, raceRunning: !!t.raceRunning, raceUpdatedAt: t.raceUpdatedAt,
+    finishTriggered: !!t.finishTriggered, finishPosition: t.finishPosition == null ? null : t.finishPosition,
+    at: Date.now(),
+  };
+}
+
+// Mette nel timer di stanza `R` la copia `d` (dall'archivio o dal telefono del box), se ha la forma giusta
+// e non e' troppo vecchia. Se mentre il server era spento il conto alla rovescia e' arrivato a zero, la gara
+// risulta partita nell'istante vero dello zero. Ritorna true se ha ripristinato qualcosa.
+function ripristinaTimer(R, d, ora = Date.now()) {
+  if (!d || typeof d !== "object") return false;
+  if (!["start", "race", "finished"].includes(d.phase)) return false;
+  const num = (x, max = 1e6) => typeof x === "number" && Number.isFinite(x) && x >= 0 && x <= max;
+  const quando = (x) => typeof x === "number" && Number.isFinite(x) && x > ora - TIMER_VALIDO_MS && x <= ora + 60000;
+  if (!num(d.startRemaining) || !num(d.raceRemaining) || !quando(d.startUpdatedAt) || !quando(d.raceUpdatedAt)) return false;
+  if (R.speed && R.speed !== 1) return false;   // stanze di prova accelerate: niente
+  if (num(d.startSeconds)) R.startSeconds = d.startSeconds;
+  if (num(d.raceSeconds) && d.raceSeconds > 0) R.raceSeconds = d.raceSeconds;
+  R.phase = d.phase;
+  R.startRemaining = d.startRemaining; R.startRunning = !!d.startRunning; R.startUpdatedAt = d.startUpdatedAt;
+  R.raceRemaining = d.raceRemaining; R.raceRunning = !!d.raceRunning; R.raceUpdatedAt = d.raceUpdatedAt;
+  R.finishTriggered = !!d.finishTriggered;
+  R.finishPosition = typeof d.finishPosition === "number" && Number.isFinite(d.finishPosition) ? d.finishPosition : null;
+  if (R.phase === "start" && R.startRunning && ora - R.startUpdatedAt >= R.startRemaining * 1000) {
+    const zero = R.startUpdatedAt + R.startRemaining * 1000;   // il momento vero del via
+    R.phase = "race"; R.startRunning = false; R.startRemaining = 0;
+    R.raceRunning = true; R.raceUpdatedAt = zero;
+  }
+  return true;
 }
 
 // Controlla un pezzo di impostazioni GPS e lo unisce a quelle che ci sono; scarta cio' che non ha la forma giusta.
@@ -219,6 +260,8 @@ function applica(S, d) {
     if (t.finishBackground === "photo" || t.finishBackground === "dark") R.finishBackground = t.finishBackground;
     if (typeof t.finishDriverName === "string") R.finishDriverName = t.finishDriverName.slice(0, 80);
   }
+  // il timer che scorre va per ultimo: sopra ha rimesso le durate, qui si rimettono i tempi veri
+  if (d.timer && ripristinaTimer(S.raceTimer, d.timer)) S.fresh.timer = false;
   if (d.collegamenti && typeof d.collegamenti === "object") S.collegamenti = d.collegamenti;
 }
 
@@ -276,4 +319,4 @@ async function svuota() {
 
 function stato() { return { archivio: nome(), ultimoErrore }; }
 
-module.exports = { scriviFoto, pulisciGps, prepara, segna, svuota, stato, istantanea, applica, _test: { leggi, scrivi } };
+module.exports = { ripristinaTimer, scriviFoto, pulisciGps, prepara, segna, svuota, stato, istantanea, applica, _test: { leggi, scrivi } };

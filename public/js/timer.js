@@ -6,6 +6,20 @@
 
 let lastTimerState = null;
 let prevTimerPhase = null;
+// Vero finche' il server e' ripartito da zero e non ha ancora un timer vero: allora non si
+// sovrascrive la copia del box (serve a rimettere il timer, vedi connection.js).
+let timerServerFresco = false;
+
+// Il box tiene una copia del timer che scorre: se Render si riavvia a gara in corso la rimanda al server.
+function salvaCopiaTimer(t){
+  if(role !== 'box' || timerServerFresco || !t || typeof code === 'undefined') return;
+  save('pc_timer', { code, at: Date.now(), t: {
+    phase: t.phase, startSeconds: t.startSeconds, raceSeconds: t.raceSeconds,
+    startRemaining: t.startRemaining, startRunning: !!t.startRunning, startUpdatedAt: t.startUpdatedAt,
+    raceRemaining: t.raceRemaining, raceRunning: !!t.raceRunning, raceUpdatedAt: t.raceUpdatedAt,
+    finishTriggered: !!t.finishTriggered, finishPosition: t.finishPosition == null ? null : t.finishPosition,
+  } });
+}
 
 function currentRemainingClient(baseRemaining, updatedAt, running, speed){
   if(!running) return baseRemaining;
@@ -44,6 +58,7 @@ function applyTimerState(t){
     if(role === 'box' && fuelSystem.onTrack) syncFuelSystem();
   }
   lastTimerState = t;
+  salvaCopiaTimer(t);
   if(role === 'box') renderTimerBox(t);
   if(role === 'auto') renderTimerAuto(t);
   // Il lampeggio verde "si parte" si vede solo sull'auto: e' il pilota che

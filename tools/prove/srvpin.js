@@ -14,7 +14,7 @@ const timer = () => emitted.filter((e) => e[0] === 'timerUpdate').length;
   delete process.env.BOX_PIN;
   let a = mk(), b = mk(); io.emit('connection', a); io.emit('connection', b);
   console.log('senza PIN, box entra:', (await join(b, 'AAA', 'box')).ok, '| auto entra:', (await join(a, 'AAA', 'auto')).ok);
-  a.emit('timerStartSet', { seconds: 600 }); console.log('senza PIN, auto puo comandare (come prima):', timer() > 0);
+  a.emit('timerStartSet', { seconds: 600 }); console.log('senza PIN, l\'auto non comanda piu\' (voluto):', timer() === 0);
   // con PIN
   process.env.BOX_PIN = '4821';
   emitted.length = 0;

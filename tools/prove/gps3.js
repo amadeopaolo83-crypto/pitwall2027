@@ -6,6 +6,7 @@ const srv = http.createServer((q, s) => { let p = decodeURIComponent(q.url.split
 srv.listen(8773, async () => {
   const b = await chromium.launch(); const pg = await b.newPage({ viewport: { width: 390, height: 800 } });
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
+  await pg.route('**/socket.io/socket.io.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.__em=[];window.io=()=>({on(){},off(){},emit(...a){window.__em.push(a)},connected:true,onAny(){}});' }));
   await pg.route('**/socket.io.min.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.__em=[];window.io=()=>({on(){},off(){},emit(...a){window.__em.push(a)},connected:true,onAny(){}});' }));
   await pg.route(/fonts\.(googleapis|gstatic)/, (r) => r.abort());
   await pg.addInitScript(() => { let off = 0; const real = Date.now.bind(Date); Date.now = () => real() + off; window.__avanza = (s) => { off += s * 1000; };

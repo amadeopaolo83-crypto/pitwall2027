@@ -27,7 +27,7 @@ box e auto (PWA + server Node + involucro Android). Questo repository (`Pitwall2
 
 ## Cose da sapere
 - Ogni telefono calcola il suo timer da `remaining/updatedAt`: il server non fa tick. Il tempo e' quello del server (`serverNow`).
-- Dopo un riavvio di Render senza archivio lo stato si perde: il box ripropone le sue copie locali (flag `fresh` in `connection.js`).
+- Dopo un riavvio di Render senza archivio lo stato si perde: il box ripropone le sue copie locali (flag `fresh` in `connection.js`, timer compreso: `pc_timer` → `timerRestore`, vale la prima copia). Gli eventi di comando li accetta solo chi e' entrato come box; ogni evento e' validato.
 - GPS: l'auto manda `gpsPos` (max 1/s) solo se `gps.on`; il box decide pista/box/rifornimento con permanenza di 10 s e isteresi di 5 m.
   Fascia di lancio: calcolata sull'auto, vedi il commento in testa a `lancio.js`.
 - Tessere mappa: Esri World Imagery e OpenStreetMap, senza chiavi; serve internet. Le zone sono nel sistema WGS84 del satellite:

@@ -8,6 +8,7 @@ srv.listen(8777, async () => {
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
   const tile = fs.readFileSync('/tmp/demo/tile.png');
   await pg.route(/arcgisonline|openstreetmap/, (r) => r.fulfill({ contentType: 'image/png', body: tile }));
+  await pg.route('**/socket.io/socket.io.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.__em=[];window.io=()=>({on(){},off(){},emit(...a){window.__em.push(a)},connected:true,onAny(){}});' }));
   await pg.route('**/socket.io.min.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.__em=[];window.io=()=>({on(){},off(){},emit(...a){window.__em.push(a)},connected:true,onAny(){}});' }));
   await pg.route(/fonts\.(googleapis|gstatic)/, (r) => r.abort());
   await pg.addInitScript(() => { navigator.geolocation.watchPosition = () => 5; navigator.geolocation.clearWatch = () => {}; navigator.geolocation.getCurrentPosition = () => {}; });

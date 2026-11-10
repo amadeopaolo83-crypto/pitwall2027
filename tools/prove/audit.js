@@ -6,6 +6,7 @@ const mk = (root, port) => new Promise((res) => { const srv = http.createServer(
   const s1 = await mk('/home/claude/pitwall2027/public', 8771), s2 = await mk('/home/claude/pitwallnew/public', 8772);
   const b = await chromium.launch();
   const prep = async (pg, url, ruolo, w, h) => {
+    await pg.route('**/socket.io/socket.io.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.io=()=>({on(){},off(){},emit(){},connected:true,onAny(){}});' }));
     await pg.route('**/socket.io.min.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.io=()=>({on(){},off(){},emit(){},connected:true,onAny(){}});' }));
     await pg.route(/fonts\.(googleapis|gstatic)/, (r) => r.abort());
     await pg.goto(url);

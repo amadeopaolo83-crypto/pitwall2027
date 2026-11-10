@@ -6,7 +6,7 @@ const srv = http.createServer((q, s) => { let p = decodeURIComponent(q.url.split
 srv.listen(8779, async () => {
   const b = await chromium.launch(); const pg = await b.newPage({ viewport: { width: 390, height: 800 } });
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
-  await pg.route('**/socket.io.min.js', (r) => r.fulfill({ contentType: 'text/javascript', body: `window.__join=[];window.io=()=>{const h={};return {connected:true,disconnect(){},on(ev,cb){ if(ev==='connect') setTimeout(cb,5); },off(){},onAny(){},
+  await pg.route('**/socket.io/socket.io.js', (r) => r.fulfill({ contentType: 'text/javascript', body: `window.__join=[];window.io=()=>{const h={};return {connected:true,disconnect(){},on(ev,cb){ if(ev==='connect') setTimeout(cb,5); },off(){},onAny(){},
     emit(ev,d,cb){ if(ev==='join'){ window.__join.push(d); if(d.pin!=='4821') return cb({ok:false,error:'pin'}); return cb({ok:true,state:window.__stato,serverNow:Date.now()}); } if(ev==='ora'&&typeof d==='function') d(Date.now()); } }};` }));
   await pg.route(/fonts\.(googleapis|gstatic)/, (r) => r.abort());
   await pg.goto('http://localhost:8779/');

@@ -12,3 +12,6 @@ e, per `srvtest2.js`, un finto modulo `web-push`.
 - `srvpin.js`: PIN del box e comandi riservati al box (server, con finto socket).
 - `pin.js`: campo PIN nella schermata iniziale.
 - `orologio.js`: sincronizzazione dell'orologio con ritardi di rete asimmetrici.
+- `riavvio.js`: riavvio del server con timer in corso (archivio, copia del box, via scaduto da spento) e validazione degli eventi; esce con codice 1 se un controllo fallisce. Serve `web-push` (anche finto) in NODE_PATH.
+- `riavvio-client.js`: il telefono del box salva e rimanda la copia del timer (Playwright, finto socket).
+- `xss.js`: nomi dei pulsanti e dei messaggi con codice HTML non devono eseguire nulla.

@@ -26,6 +26,10 @@ function load(key, fallback){
   try{ const v = JSON.parse(localStorage.getItem(key)); return v || fallback; }catch(e){ return fallback; }
 }
 
+// Testo per un attributo o un nodo scritto come HTML: niente codice dai nomi dei pulsanti o dei messaggi.
+function esc(x){ return String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function coloreOk(c, def){ return /^#[0-9a-fA-F]{6}$/.test(c) ? c : def; }
+
 function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
 
 const DEFAULT_QB = [

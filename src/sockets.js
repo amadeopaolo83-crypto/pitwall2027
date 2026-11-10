@@ -12,14 +12,15 @@ const ponte = require("./ponte");
 const passo = require("./passo");
 const crypto = require("crypto");
 
-// PIN del box (facoltativo): se sul server c'e' la variabile BOX_PIN, chi entra come "box" deve
-// darlo, e gli eventi di comando (timer, gara, messaggi, impostazioni) li accetta solo da chi e' entrato
-// come box. Senza BOX_PIN tutto funziona come sempre. Gli eventi che l'auto manda davvero (messaggi
-// rapidi, via/arrivo automatici, ripristino dopo riavvio, GPS) restano aperti.
+// Gli eventi di comando (timer, gara, messaggi, impostazioni) li accetta solo chi e' entrato come "box";
+// l'auto manda solo i suoi (messaggi rapidi, via/arrivo automatici, ripristino dopo riavvio, GPS).
+// PIN del box (facoltativo): se sul server c'e' la variabile BOX_PIN, chi entra come "box" deve darlo.
+// Senza BOX_PIN il ruolo resta quello dichiarato dal telefono.
 const SOLO_BOX = new Set([
   "timerStartSet", "timerStartControl", "timerControl", "timerRaceSet", "timerRaceControl", "timerSource",
   "timerTestSpeed", "timerDebugJump", "finishConfigUpdate", "raceStart", "raceStop", "historyClear",
-  "flashMessage", "dayModeUpdate", "passoAzzera", "aubDisconnect", "ponteDisconnect",
+  "flashMessage", "dayModeUpdate", "passoAzzera", "aubDisconnect", "ponteDisconnect", "timerRestore",
+  "fuelSystemUpdate", "fuelUpdate", "autonomyUpdate", "quickButtonsUpdate", "flashPresetsUpdate",
 ]);
 const pinAttivo = () => String(process.env.BOX_PIN || "");
 function pinGiusto(dato) {
@@ -37,6 +38,48 @@ function currentRemaining(baseRemaining, updatedAt, running, speed) {
   return Math.max(0, baseRemaining - elapsedSeconds);
 }
 
+// Controlli sulla forma dei dati che arrivano dai telefoni: un valore sbagliato si scarta, non rompe il server.
+const eNum = (x, min = -Infinity, max = Infinity) => typeof x === "number" && Number.isFinite(x) && x >= min && x <= max;
+const testo = (x, max) => String(x == null ? "" : x).slice(0, max);
+const COLORE = /^#[0-9a-fA-F]{6}$/;
+const LITRI_MAX = 1000;
+
+function fuelSystemValido(f) {
+  if (!f || typeof f !== "object") return null;
+  if (!eNum(f.tankCapacityLiters, 1, LITRI_MAX) || !eNum(f.currentLiters, 0, LITRI_MAX)) return null;
+  if (f.consumptionRatePerHour != null && !eNum(f.consumptionRatePerHour, 0, 1000)) return null;
+  if (f.sessionStartAt != null && !eNum(f.sessionStartAt, 0, 1e14)) return null;
+  if (!eNum(f.sessionStartLiters == null ? 0 : f.sessionStartLiters, 0, LITRI_MAX)) return null;
+  return {
+    tankCapacityLiters: f.tankCapacityLiters, currentLiters: f.currentLiters,
+    consumptionRatePerHour: f.consumptionRatePerHour == null ? null : f.consumptionRatePerHour,
+    onTrack: !!f.onTrack, sessionStartAt: f.sessionStartAt == null ? null : f.sessionStartAt,
+    sessionStartLiters: f.sessionStartLiters == null ? 0 : f.sessionStartLiters,
+  };
+}
+
+function bottoniValidi(b) {
+  if (!Array.isArray(b) || b.length < 1 || b.length > 8) return null;
+  const out = [];
+  for (const x of b) {
+    if (!x || typeof x !== "object" || !eNum(x.id, 0, 1e6)) return null;
+    out.push({ id: x.id, label: testo(x.label, 60), color: COLORE.test(x.color) ? x.color : "#3fa9f5" });
+  }
+  return out;
+}
+
+// Un errore dentro un evento non deve fermare il server: si scrive nel registro e si va avanti.
+function protetto(nome, fn) {
+  return (...args) => {
+    try {
+      const r = fn(...args);
+      if (r && typeof r.catch === "function") r.catch((e) => console.error(`[socket ${nome}]`, e && e.message));
+    } catch (e) {
+      console.error(`[socket ${nome}]`, e && e.message);
+    }
+  };
+}
+
 function registra(io) {
   // Allo scadere del tempo massimo la gara si chiude da sola e lo dice a tutti.
   const fineAutomatica = (code) => {
@@ -49,18 +92,28 @@ function registra(io) {
     let joinedCode = null;
     let joinedRole = null; // "box" | "auto"
 
+    // Ogni gestore e' protetto: dati mancanti o strani non fanno cadere il processo.
+    const _on = socket.on.bind(socket);
+    socket.on = (nome, fn) => { _on(nome, protetto(nome, fn)); return socket; };
+
     // Le impostazioni che vanno salvate fuori dal server quando cambiano (archivio.js).
+    const TIMER_EVENTI = new Set(["timerStartSet", "timerStartControl", "timerControl", "timerRaceSet", "timerRaceControl", "raceTimerAutoStart", "finishTrigger", "timerDebugJump", "timerSource"]);
     const SALVA = new Set([
       "fuelSystemUpdate", "autonomyUpdate", "dayModeUpdate", "quickButtonsUpdate", "flashPresetsUpdate",
       "timingViewUpdate", "autoLayoutUpdate", "sogliaGapUpdate", "timerStartSet", "timerRaceSet", "finishConfigUpdate",
       "aubConnect", "ponteConnect", "gpsConfigUpdate", "gpsGiroRif",
+      "timerStartControl", "timerControl", "timerRaceControl", "raceTimerAutoStart", "finishTrigger", "timerDebugJump", "timerRestore",
     ]);
-    socket.onAny((evento) => { if (joinedCode && SALVA.has(evento)) archivio.segna(joinedCode); });
+    socket.onAny((evento) => {
+      if (!joinedCode) return;
+      if (TIMER_EVENTI.has(evento)) getRoomState(joinedCode).fresh.timer = false;   // il timer e' stato toccato: la copia dei telefoni non serve piu'
+      if (SALVA.has(evento)) archivio.segna(joinedCode);
+    });
 
-    // Con il PIN attivo gli eventi di comando passano solo se chi li manda e' entrato come box.
+    // Gli eventi di comando passano solo se chi li manda e' entrato come box.
     if (typeof socket.use === "function") {
       socket.use(([evento], next) => {
-        if (pinAttivo() && SOLO_BOX.has(evento) && joinedRole !== "box") return; // scartato in silenzio
+        if (SOLO_BOX.has(evento) && joinedRole !== "box") return; // scartato in silenzio
         next();
       });
     }
@@ -100,8 +153,8 @@ function registra(io) {
     });
 
     // AUTO -> BOX: pressione di uno dei 4 pulsanti rapidi
-    socket.on("quickMessage", ({ buttonId, label }) => {
-      if (!joinedCode) return;
+    socket.on("quickMessage", ({ buttonId, label } = {}) => {
+      if (!joinedCode || !eNum(buttonId, 0, 1e6)) return;
       const state = getRoomState(joinedCode);
       // Ogni messaggio ha un identificativo unico, cosi' chi lo riceve due volte
       // (dal vivo e poi dalla cronologia) lo mostra una volta sola.
@@ -131,41 +184,50 @@ function registra(io) {
     });
 
     // BOX -> AUTO: messaggio a comparsa (testo, colore, durata) + lettura vocale
-    socket.on("flashMessage", ({ text, color, durationSeconds }) => {
-      if (!joinedCode) return;
+    socket.on("flashMessage", ({ text, color, durationSeconds } = {}) => {
+      if (!joinedCode || typeof text !== "string") return;
       const state = getRoomState(joinedCode);
-      state.lastFlash = { text, color, durationSeconds, at: Date.now() };
+      state.lastFlash = {
+        text: text.slice(0, 200),
+        color: COLORE.test(color) ? color : "#2FB6C4",
+        durationSeconds: eNum(durationSeconds, 1, 120) ? durationSeconds : 6,
+        at: Date.now(),
+      };
       io.to(joinedCode).emit("flashMessage", state.lastFlash);
     });
 
     // BOX -> tutti i box: sincronizza capienza, litri, consumo, stato in pista/ai box
-    socket.on("fuelSystemUpdate", (fuelSystem) => {
+    socket.on("fuelSystemUpdate", (dati) => {
       if (!joinedCode) return;
       const state = getRoomState(joinedCode);
+      const fuelSystem = fuelSystemValido(dati);
+      if (!fuelSystem) return;
+      // Dopo un riavvio ogni box rimanda la sua copia: vale la prima, le altre (piu' vecchie) no.
+      if (dati.ripristino && !state.fresh.fuel) return;
       state.fuelSystem = fuelSystem;
       state.fresh.fuel = false;
       io.to(joinedCode).emit("fuelSystemUpdate", state.fuelSystem);
     });
 
     // BOX -> AUTO: aggiornamento consumo carburante (percentuale 0-100)
-    socket.on("fuelUpdate", ({ percent }) => {
-      if (!joinedCode) return;
+    socket.on("fuelUpdate", ({ percent } = {}) => {
+      if (!joinedCode || !eNum(percent, 0, 100)) return;
       const state = getRoomState(joinedCode);
       state.fuel = { percent, updatedAt: Date.now() };
       io.to(joinedCode).emit("fuelUpdate", state.fuel);
     });
 
     // BOX -> AUTO: tempo di autonomia stimato (per previsione sosta)
-    socket.on("autonomyUpdate", ({ minutes }) => {
-      if (!joinedCode) return;
+    socket.on("autonomyUpdate", ({ minutes } = {}) => {
+      if (!joinedCode || !eNum(minutes, 0, 100000)) return;
       const state = getRoomState(joinedCode);
       state.autonomyMinutes = minutes;
       io.to(joinedCode).emit("autonomyUpdate", { minutes });
     });
 
     // BOX -> AUTO: modalità giorno/notte
-    socket.on("dayModeUpdate", ({ dayMode }) => {
-      if (!joinedCode) return;
+    socket.on("dayModeUpdate", ({ dayMode } = {}) => {
+      if (!joinedCode || typeof dayMode !== "boolean") return;
       const state = getRoomState(joinedCode);
       state.dayMode = dayMode;
       io.to(joinedCode).emit("dayModeUpdate", { dayMode });
@@ -184,9 +246,12 @@ function registra(io) {
     });
 
     // BOX -> AUTO: configurazione dei 4 pulsanti rapidi (testo + colore)
-    socket.on("quickButtonsUpdate", ({ buttons }) => {
+    socket.on("quickButtonsUpdate", ({ buttons: grezzi, ripristino } = {}) => {
       if (!joinedCode) return;
+      const buttons = bottoniValidi(grezzi);
+      if (!buttons) return;
       const state = getRoomState(joinedCode);
+      if (ripristino && !state.fresh.buttons) return;
       state.quickButtons = buttons;
       state.fresh.buttons = false;
       io.to(joinedCode).emit("quickButtonsUpdate", { buttons });
@@ -407,7 +472,7 @@ function registra(io) {
     // La partenza puo' essere 0: in quel caso "Avvia" fa partire subito solo il
     // timer di gara (vedi timerControl).
     socket.on("timerStartSet", ({ seconds } = {}) => {
-      if (!joinedCode || typeof seconds !== "number" || !(seconds >= 0) || inAutomatico()) return;
+      if (!joinedCode || !eNum(seconds, 0, 7 * 86400) || inAutomatico()) return;
       const t = getRoomState(joinedCode).raceTimer;
       if (t.startRunning) return;
       t.startSeconds = seconds;
@@ -492,7 +557,7 @@ function registra(io) {
     // BOX -> tutti: imposta/modifica la durata di gara (tipicamente da fermo o
     // in pausa, per esempio dopo una bandiera rossa che accorcia la gara)
     socket.on("timerRaceSet", ({ seconds } = {}) => {
-      if (!joinedCode || !seconds || inAutomatico()) return;
+      if (!joinedCode || !eNum(seconds, 1, 7 * 86400) || inAutomatico()) return;
       const t = getRoomState(joinedCode).raceTimer;
       if (t.raceRunning) return;
       t.raceSeconds = seconds;
@@ -531,6 +596,8 @@ function registra(io) {
       // In automatico il via lo decidono gli orari di Aub: si riallinea in questo istante.
       if (t.source === "aub") return aubtimer.sincronizza(joinedCode);
       if (t.phase !== "start") return;
+      // Il via si accetta solo se il conto alla rovescia e' davvero (quasi) a zero: un telefono sbagliato non lo anticipa.
+      if (!t.startRunning || currentRemaining(t.startRemaining, t.startUpdatedAt, t.startRunning, t.speed) > 3) return;
       t.phase = "race";
       t.startRunning = false;
       t.startRemaining = 0;
@@ -541,7 +608,7 @@ function registra(io) {
 
     // BOX -> tutti: modalita' test, velocita' accelerata dei timer (solo stanze TEST+numero)
     socket.on("timerTestSpeed", ({ speed } = {}) => {
-      if (!joinedCode || !eProva(joinedCode) || !speed || inAutomatico()) return;
+      if (!joinedCode || !eProva(joinedCode) || !eNum(speed, 0.1, 1000) || inAutomatico()) return;
       const t = getRoomState(joinedCode).raceTimer;
       // congela i tempi correnti prima di cambiare velocita', per continuita'
       t.startRemaining = currentRemaining(t.startRemaining, t.startUpdatedAt, t.startRunning, t.speed);
@@ -638,6 +705,17 @@ function registra(io) {
       io.to(joinedCode).emit("timerUpdate", t);
     });
 
+    // BOX -> server: dopo un riavvio il timer che scorreva lo rimette il telefono del box (solo se
+    // il server e' ripartito da zero e nessuno lo ha ancora toccato; vale la prima copia che arriva).
+    socket.on("timerRestore", (d) => {
+      if (!joinedCode) return;
+      const state = getRoomState(joinedCode);
+      if (!state.fresh.timer) return;
+      if (!archivio.ripristinaTimer(state.raceTimer, d)) return;
+      state.fresh.timer = false;
+      io.to(joinedCode).emit("timerUpdate", state.raceTimer);
+    });
+
     // BOX (o in automatico a fine timer gara) -> tutti: mostra il Finish
     socket.on("finishTrigger", ({ position, driverName } = {}) => {
       if (!joinedCode) return;
@@ -645,8 +723,8 @@ function registra(io) {
       const t = state.raceTimer;
       t.phase = "finished";
       t.finishTriggered = true;
-      t.finishPosition = position != null ? position : posizioneFinale(state.timing);
-      if (driverName) t.finishDriverName = driverName;
+      t.finishPosition = eNum(position, 0, 999) ? position : posizioneFinale(state.timing);
+      if (typeof driverName === "string" && driverName) t.finishDriverName = driverName.slice(0, 80);
       io.to(joinedCode).emit("timerUpdate", t);
     });
 
