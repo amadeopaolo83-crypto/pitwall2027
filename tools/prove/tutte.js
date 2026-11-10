@@ -9,9 +9,9 @@ const path = require('path');
 
 const TUTTE = [
   // server, con finti socket
-  'srvtest2', 'srvpin', 'riavvio',
+  'srvtest2', 'srvpin', 'riavvio', 'doppio',
   // pagina nel browser (Playwright), con finto socket
-  'orologio', 'pin', 'riavvio-client', 'xss', 'cambia', 'gps3', 'lancio1', 'mappa1', 'mappa2', 'tocchi',
+  'orologio', 'pin', 'riavvio-client', 'doppio-client', 'xss', 'cambia', 'gps3', 'lancio1', 'mappa1', 'mappa2', 'tocchi',
   // involucro Android: controlli sui sorgenti (la compilazione la fa android.yml)
   'apk',
   // vista auto identica a pitwallnew

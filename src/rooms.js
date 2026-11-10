@@ -82,6 +82,9 @@ function getRoomState(code) {
       },
       // Gara avviata/fermata dal box: finche' e' attiva il server si tiene sveglio.
       race: { active: false, startedAt: null },
+      // Cambio pilota (condiviso tra i box): quanti ne sono stati confermati e da quando dura il turno; domanda aperta.
+      cambioPilota: { n: 0, da: null },
+      cambioDomanda: null,
       // Doppio timer mostrato sull'auto: "partenza" (countdown fino al via) e
       // "gara" (countdown della durata di gara, che scatta in automatico a
       // fine countdown di partenza). Nome diverso da `race` qui sopra, che e'

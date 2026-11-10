@@ -467,3 +467,17 @@ body.mp-aperta{overflow:hidden;}
 #boxView .flash-row{ grid-template-columns:52px 72px 1fr 52px; }
 #boxView .flash-row input[type=text]{ grid-column:1 / -1; }
 #boxView .flash-row input[type=number]{ width:auto; }
+
+/* doppio box: barra PRIMARIO / SECONDARIO */
+.box-ruolo{margin:6px 0;padding:8px 10px;border-radius:10px;border:1px solid var(--line,#2a2f35);background:#14181c;font-size:14px;}
+.box-ruolo.primario{border-color:#2f7d4f;}
+.box-ruolo.secondario{border-color:#c98a1b;background:#1d1710;}
+.box-ruolo .br-riga{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+.box-ruolo .br-riga + .br-riga{margin-top:8px;}
+.box-ruolo .br-testo{color:var(--muted,#9aa4ad);flex:1 1 140px;}
+.box-ruolo b{letter-spacing:.06em;}
+.box-ruolo.primario b{color:#4cc27f;}
+.box-ruolo.secondario b{color:#f0a93a;}
+.box-toast{position:fixed;left:12px;right:12px;bottom:18px;z-index:9999;padding:14px 16px;border-radius:12px;background:#222a31;color:#fff;border:1px solid #c98a1b;font-size:15px;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.5);}
+.box-toast[hidden]{display:none;}
+.box-ruolo .btn{min-height:52px;min-width:52px;font-size:14px;}

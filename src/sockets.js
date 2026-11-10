@@ -5,6 +5,7 @@
 
 const { getRoomState, fotoFinale, posizioneFinale, eProva } = require("./rooms");
 const archivio = require("./archivio");
+const doppio = require("./doppiobox");
 const { notifyBoxDevices, togliDispositivo } = require("./push");
 const aub = require("./aub");
 const aubtimer = require("./aubtimer");
@@ -21,6 +22,17 @@ const SOLO_BOX = new Set([
   "timerTestSpeed", "timerDebugJump", "finishConfigUpdate", "raceStart", "raceStop", "historyClear",
   "flashMessage", "dayModeUpdate", "passoAzzera", "aubDisconnect", "ponteDisconnect", "timerRestore",
   "fuelSystemUpdate", "fuelUpdate", "autonomyUpdate", "quickButtonsUpdate", "flashPresetsUpdate",
+  "boxCedi", "boxRiprendi", "boxPrendi", "cambioDomanda", "cambioRisposta", "cambioAzzera",
+]);
+
+// Doppio box (vedi doppiobox.js): con due o piu' box collegati questi comandi li accetta solo il primario.
+// Restano aperti al secondario: messaggi all'auto (flashMessage), carburante e rifornimento, risposta al cambio
+// pilota, ripristino dopo un riavvio (le voci con `ripristino` e timerRestore).
+const SOLO_PRIMARIO = new Set([
+  "timerStartSet", "timerStartControl", "timerControl", "timerRaceSet", "timerRaceControl", "timerSource", "timerTestSpeed",
+  "timerDebugJump", "finishConfigUpdate", "finishPhotoUpdate", "finishTrigger", "raceStart", "raceStop", "historyClear",
+  "dayModeUpdate", "flashPresetsUpdate", "quickButtonsUpdate", "timingViewUpdate", "autoLayoutUpdate", "sogliaGapUpdate",
+  "gpsConfigUpdate", "passoAzzera", "aubConnect", "aubDisconnect", "ponteConnect", "ponteDisconnect", "cambioDomanda", "cambioAzzera",
 ]);
 const pinAttivo = () => String(process.env.BOX_PIN || "");
 function pinGiusto(dato) {
@@ -94,6 +106,7 @@ function registra(io) {
   io.on("connection", (socket) => {
     let joinedCode = null;
     let joinedRole = null; // "box" | "auto"
+    let joinedBoxId = null; // identita' di questo telefono come box (doppio box)
 
     // Ogni gestore e' protetto: dati mancanti o strani non fanno cadere il processo.
     const _on = socket.on.bind(socket);
@@ -115,8 +128,19 @@ function registra(io) {
 
     // Gli eventi di comando passano solo se chi li manda e' entrato come box.
     if (typeof socket.use === "function") {
-      socket.use(([evento], next) => {
+      socket.use(([evento, ...resto], next) => {
         if (SOLO_BOX.has(evento) && joinedRole !== "box") return; // scartato in silenzio
+        // Doppio box: un secondario non fa i comandi riservati (salvo i ripristini dopo un riavvio).
+        if (joinedRole === "box" && SOLO_PRIMARIO.has(evento) && !doppio.puoComandare(joinedCode, joinedBoxId)) {
+          const dati = resto[0];
+          const ripristino = dati && typeof dati === "object" && dati.ripristino === true;
+          if (!(ripristino && (evento === "quickButtonsUpdate" || evento === "aubConnect" || evento === "ponteConnect"))) {
+            socket.emit("boxNegato", { evento });
+            const ack = resto[resto.length - 1];
+            if (typeof ack === "function") { try { ack({ ok: false, error: "secondario" }); } catch (e) { /* niente */ } }
+            return;
+          }
+        }
         next();
       });
     }
@@ -124,22 +148,25 @@ function registra(io) {
     // Orologio: il telefono misura il tempo di andata e ritorno e ne ricava lo scarto dal server.
     socket.on("ora", (ack) => { if (typeof ack === "function") ack(Date.now()); });
 
-    socket.on("join", async ({ code, role, pin } = {}, ack) => {
+    socket.on("join", async ({ code, role, pin, boxId } = {}, ack) => {
       if (!code || !role) return ack && ack({ ok: false, error: "codice o ruolo mancante" });
       if (role === "box" && pinAttivo() && !pinGiusto(pin)) return ack && ack({ ok: false, error: "pin" });
       const codice = String(code).trim().toUpperCase();
       // Prima le impostazioni salvate (se la stanza non e' gia' in memoria), poi lo stato.
       try { await archivio.prepara(codice); } catch (e) { /* si parte con i valori di partenza */ }
+      if (joinedCode && joinedRole === "box") doppio.esci(joinedCode, socket);   // entra di nuovo con un altro codice o ruolo
       joinedCode = codice;
       joinedRole = role;
       socket.join(joinedCode);
       socket.data.role = role;
+      joinedBoxId = role === "box" ? (typeof boxId === "string" && boxId && boxId.length <= 64 ? boxId : socket.id) : null;
+      if (role === "box") doppio.entra(joinedCode, socket, joinedBoxId);
 
       const state = getRoomState(joinedCode);
       // serverNow: l'orologio del telefono puo' essere sbagliato o su un'altra
       // ora; i timer si calcolano sul tempo del server, non su quello del
       // dispositivo, cosi' restano giusti e uguali su tutti i telefoni.
-      ack && ack({ ok: true, state, serverNow: Date.now() });
+      ack && ack({ ok: true, state, serverNow: Date.now(), boxRuolo: role === "box" ? doppio.stato(joinedCode, joinedBoxId) : null });
     });
 
     // BOX -> server: registra la sottoscrizione push di questo dispositivo
@@ -739,7 +766,37 @@ function registra(io) {
       io.to(joinedCode).emit("timerUpdate", t);
     });
 
+    // ----- DOPPIO BOX -----
+    socket.on("boxCedi", ({ minuti } = {}) => { if (joinedCode) doppio.cedi(joinedCode, joinedBoxId, Number(minuti)); });
+    socket.on("boxRiprendi", () => { if (joinedCode) doppio.riprendi(joinedCode, joinedBoxId); });
+    socket.on("boxPrendi", () => { if (joinedCode) doppio.prendi(joinedCode, joinedBoxId); });
+
+    // Cambio pilota: la domanda "era un cambio pilota?" la apre il primario (il GPS lo segue lui), ma
+    // risponde chi e' piu' vicino: il primo che risponde la chiude su tutti i box.
+    socket.on("cambioDomanda", ({ ancoraDa } = {}) => {
+      if (!joinedCode) return;
+      const state = getRoomState(joinedCode);
+      state.cambioDomanda = { at: Date.now() };
+      socket.to(joinedCode).emit("cambioDomanda", { ancoraDa: eNum(ancoraDa, 0, 1e14) ? ancoraDa : Date.now() });
+    });
+    socket.on("cambioRisposta", ({ si, n } = {}) => {
+      if (!joinedCode) return;
+      const state = getRoomState(joinedCode);
+      const d = state.cambioDomanda;
+      if (!d || Date.now() - d.at > 30 * 60000) return;      // nessuna domanda aperta (o gia' chiusa da un altro box)
+      state.cambioDomanda = null;
+      if (si === true) state.cambioPilota = { n: eNum(n, 1, 999) ? n : ((state.cambioPilota && state.cambioPilota.n) || 0) + 1, da: Date.now() };
+      socket.to(joinedCode).emit("cambioRisposta", { si: si === true, cambioPilota: state.cambioPilota });
+    });
+    socket.on("cambioAzzera", () => {
+      if (!joinedCode) return;
+      const state = getRoomState(joinedCode);
+      state.cambioPilota = { n: 0, da: null };
+      socket.to(joinedCode).emit("cambioAzzera", {});
+    });
+
     socket.on("disconnect", () => {
+      if (joinedCode && joinedRole === "box") doppio.esci(joinedCode, socket);
       // nessuna pulizia particolare: lo stato della stanza resta per i reconnect.
       // Anche il collegamento alla classifica resta aperto: serve alla squadra,
       // non al singolo telefono che si e' spento.

@@ -265,7 +265,10 @@ function gpsRicevi(p){
   const cand = gpsZonaDi(p);
   const ora = Date.now();
   if(cand !== gpsCandidato){ gpsCandidato = cand; gpsCandidatoDa = ora; }
-  if(cand !== gpsStato && ora - gpsCandidatoDa >= GPS_ATTESA_MS) gpsCambiaStato(cand);
+  if(cand !== gpsStato && ora - gpsCandidatoDa >= GPS_ATTESA_MS){
+    // il GPS "decide" (in pista / ai box / rifornimento) solo sul box primario; il secondario si limita a mostrarlo
+    if(boxPrimario) gpsCambiaStato(cand); else { gpsStato = cand; gpsStatoDa = ora; }
+  }
   gpsAggiornaFermo(p, cand);
   gpsRender();
 }
@@ -326,9 +329,11 @@ function gpsAggiornaFermo(p, zona){
 // Superata la soglia non registra da solo: sul box compare la domanda "era un cambio pilota?".
 function gpsControllaFermo(){
   if(!gpsCfg.on || !gpsAncora || !gpsInCorsia || gpsCambioFatto || gpsChiede) return;
+  if(!boxPrimario) return; // la domanda la apre il box primario; il secondario la riceve dal server
   if(Date.now() - gpsUltimaBuona > GPS_PERSO_MS) return; // senza segnale non si decide
   if((Date.now() - gpsAncoraDa) / 1000 >= gpsCfg.fermoS){
     gpsChiede = true;
+    if(socket && socket.connected) socket.emit('cambioDomanda', { ancoraDa: gpsAncoraDa });
     try{ if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }catch(e){}
     if(typeof notificaAndroid === 'function') notificaAndroid('PitComm', 'Auto ferma in corsia box: era un cambio pilota?');
   }
@@ -338,6 +343,31 @@ function gpsRispostaCambio(si){
   gpsChiede = false;
   gpsCambioFatto = true; // una sola domanda per ogni sosta
   if(si) gpsRegistraCambio();
+  // lo sa anche l'altro box: la domanda si chiude su tutti (risponde chi e' piu' vicino)
+  if(socket && socket.connected) socket.emit('cambioRisposta', { si: !!si, n: gpsCambio.n });
+  gpsRender();
+}
+
+// La domanda "era un cambio pilota?" aperta dal box primario arriva anche qui: si puo' rispondere da questo box.
+function gpsDomandaRemota(d){
+  if(role !== 'box' || !gpsCfg.on || gpsChiede) return;
+  gpsChiede = true; gpsCambioFatto = false;
+  if(d && Number.isFinite(d.ancoraDa)) gpsAncoraDa = d.ancoraDa;
+  try{ if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }catch(e){}
+  if(typeof notificaAndroid === 'function') notificaAndroid('PitComm', 'Auto ferma in corsia box: era un cambio pilota?');
+  gpsRender();
+}
+
+// L'altro box ha risposto: la domanda sparisce anche qui e, se era un cambio, si aggiorna il turno.
+function gpsRispostaRemota(d){
+  gpsChiede = false; gpsCambioFatto = true;
+  if(d && d.si && d.cambioPilota && d.cambioPilota.da){ gpsCambio = { n: d.cambioPilota.n, da: d.cambioPilota.da }; save('pc_gps_cambio', gpsCambio); }
+  gpsRender();
+}
+
+function gpsAzzeraRemoto(){
+  gpsCambio = { n: 0, da: null };
+  save('pc_gps_cambio', gpsCambio);
   gpsRender();
 }
 
@@ -349,6 +379,8 @@ function gpsRegistraCambio(){
 }
 
 function gpsAzzeraCambi(){
+  if(!boxPrimario){ if(typeof boxNegato === 'function') boxNegato(); return; }
+  if(socket && socket.connected) socket.emit('cambioAzzera');
   gpsCambio = { n: 0, da: null };
   save('pc_gps_cambio', gpsCambio);
   gpsRender();

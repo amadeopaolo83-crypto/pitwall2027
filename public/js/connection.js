@@ -39,7 +39,7 @@ function connect(serverUrl, joinTimeout){
   socket.on('connect', () => {
     let pin = '';
     try{ pin = (role === 'box' ? (($('boxPin') && $('boxPin').value.trim()) || localStorage.getItem('pc_pin') || '') : ''); }catch(e){}
-    socket.emit('join', { code, role, pin }, (res) => {
+    socket.emit('join', { code, role, pin, boxId: role === 'box' ? boxIdLocale() : undefined }, (res) => {
       clearTimeout(joinTimeout);
       if(res && res.error === 'pin'){
         // il server vuole il PIN del box: si mostra il campo e si riprova
@@ -60,6 +60,7 @@ function connect(serverUrl, joinTimeout){
       if(res.serverNow) clockOffset = res.serverNow - Date.now();   // prima stima (grezza)
       sincronizzaOrologio(6);                                       // poi si affina con il tempo di andata e ritorno
       applyState(res.state);
+      if(role === 'box') applyBoxRuolo(res.boxRuolo);
       $('landing').hidden = true;
       if(role === 'auto') enterAutoView(); else enterBoxView();
     });
@@ -235,6 +236,9 @@ function applyState(state){
     if(typeof gpsRipristinaSeServerVuoto === 'function') gpsRipristinaSeServerVuoto(state);
   }
   if(typeof finishFotoRipristina === 'function') finishFotoRipristina(state);
+  if(state.cambioPilota && state.cambioPilota.da && typeof gpsCambio !== 'undefined' && state.cambioPilota.da > (gpsCambio.da || 0)){
+    gpsCambio = { n: state.cambioPilota.n, da: state.cambioPilota.da }; save('pc_gps_cambio', gpsCambio);
+  }
   if(state.timing) renderTiming(state.timing);
   if(state.aub) renderAubStatus(state.aub);
   if(state.ponte) renderPonteStatus(state.ponte);
@@ -286,6 +290,11 @@ function registerListeners(){
   socket.on('timingUpdate', () => { timingRicevutoAt = Date.now(); });
   socket.on('aubStatus', (a) => { aubStatoUltimo = a; });
   socket.on('ponteStatus', (f) => { ponteStatoUltimo = f; });
+  socket.on('boxRuolo', (r) => { if(role === 'box') applyBoxRuolo(r); });
+  socket.on('boxNegato', () => { if(role === 'box') boxNegato(); });
+  socket.on('cambioDomanda', (d) => { if(role === 'box' && typeof gpsDomandaRemota === 'function') gpsDomandaRemota(d); });
+  socket.on('cambioRisposta', (d) => { if(role === 'box' && typeof gpsRispostaRemota === 'function') gpsRispostaRemota(d); });
+  socket.on('cambioAzzera', () => { if(role === 'box' && typeof gpsAzzeraRemoto === 'function') gpsAzzeraRemoto(); });
   socket.on('timerUpdate', (t) => { timerServerFresco = false; applyTimerState(t); });
 }
 

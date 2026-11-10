@@ -25,3 +25,5 @@ Le schermate vanno nella cartella temporanea (`pitcomm-prove`) o in `PROVE_OUT`.
 - `apk.js`: controlli sui sorgenti Android (servizio di tipo location, permessi all'avvio, pagina ricreata se cade o si blocca). Non sostituisce la compilazione (`android.yml`) ne' i telefoni veri.
 - `cambia.js`: "◄ cambia" sull'auto esce solo con il doppio tocco.
 - `tutte.js`: le esegue tutte e fa il riepilogo.
+- `doppio.js`: doppio box sul server (ruoli, comandi riservati, cedi priorita', scadenza, scollegamento, cambio pilota condiviso).
+- `doppio-client.js`: barra PRIMARIO/SECONDARIO, doppio tocco, cedi priorita', GPS e cambio pilota sul telefono.

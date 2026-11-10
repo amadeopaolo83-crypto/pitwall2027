@@ -52,6 +52,14 @@ Per attivare il PIN: su Render → Environment → `BOX_PIN` (numeri, 4-8 cifre)
   54x52, stesso disegno); messaggi a schermo intero su due righe. `tocchi.js`: 136 tocchi su 4 schede, telefono 360/390,
   orizzontale, tablet, giorno e notte, tutti >= 52 px, niente fuori dal riquadro. Vista auto identica (audit).
 
+### Doppio box (primario / secondario)
+- Si accende con `DOPPIO_BOX=1` su Render (spento: tutto come prima). Con un solo box collegato non cambia niente.
+- Il primo box che entra e' **primario**: comanda timer, gara, impostazioni, GPS, pulsanti e messaggi preimpostati. Gli altri sono **secondari**: vedono tutto e possono mandare messaggi all'auto, registrare rifornimenti e rispondere alla domanda "era un cambio pilota?" (la prima risposta chiude la domanda su tutti i box).
+- Il primario puo' **cedere la priorita' per 15/30/60/120 minuti**; poi torna da sola (se chi l'aveva ceduta e' collegato). "Riprendi" la riprende subito. Un secondario puo' **prendere il comando** con doppio tocco.
+- Se il primario resta scollegato per 20 s il comando passa al box collegato piu' anziano. Ogni telefono ha un `boxId` (`pc_boxid`), cosi' chi si ricollega e' lo stesso box.
+- Solo il primario decide il GPS (in pista / ai box / rifornimento) e apre la domanda del cambio pilota; il secondario mostra lo stato. Il secondario che prova un comando riservato vede un avviso.
+- Lo stato dei ruoli e' in memoria: dopo un riavvio del server il primo che rientra e' primario. Prove: `doppio.js`, `doppio-client.js`.
+
 ## 3. Architettura: tre strade
 - **A (consigliata, poco lavoro):** restare cosi', attivare `BOX_PIN`, configurare l'archivio (Upstash) anche su Pitwall2027, passare Render a un piano che non si addormenta. Costo: pochi euro al mese e mezz'ora.
 - **B (media):** salvare ogni 30-60 s uno "snapshot" della gara (timer, carburante, giri, passo, ultimo stato in pista/box) nell'archivio, cosi' un riavvio di Render e' invisibile. Costo: uno o due giorni di lavoro e prove. Vale la pena prima della prossima 24 ore.
