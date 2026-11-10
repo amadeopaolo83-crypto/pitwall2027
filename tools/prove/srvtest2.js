@@ -1,0 +1,74 @@
+const EventEmitter = require('events');
+const { registra } = require('/home/claude/pitwall2027/src/sockets.js');
+const { serviRichiesta } = require('/home/claude/pitwall2027/src/static.js');
+const emitted = [];
+const mk = () => { const s = new EventEmitter(); s.data = {}; s.join = () => {}; s.onAny = (f) => { const o = s.emit.bind(s); s.emit = (ev, ...a) => { f(ev, ...a); return o(ev, ...a); }; }; return s; };
+const io = new EventEmitter(); io.to = () => ({ emit: (ev, d) => emitted.push([ev, d]) }); io.in = io.to;
+registra(io);
+const get = (url) => new Promise((r) => { const res = { writeHead(c, h) { this.c = c; this.h = h; }, end(b) { r({ c: this.c, len: b ? b.length : 0, h: this.h }); } }; serviRichiesta({ url, method: 'GET' }, res); });
+(async () => {
+  const box = mk(), auto = mk();
+  io.emit('connection', box); io.emit('connection', auto);
+  const j1 = await new Promise((r) => box.emit('join', { code: 'flatsix', role: 'box' }, r));
+  await new Promise((r) => auto.emit('join', { code: 'FLATSIX', role: 'auto' }, r));
+  console.log('stato senza foto:', j1.state.finishPhotoAt, '| corsia:', JSON.stringify(j1.state.gps.corsia), j1.state.gps.larg);
+  console.log('404 senza foto:', (await get('/foto-finale/FLATSIX')).c);
+  const jpg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(300, 7)]);
+  const dati = 'data:image/jpeg;base64,' + jpg.toString('base64');
+  auto.emit('finishPhotoUpdate', { data: dati });
+  console.log('auto non puo caricare:', emitted.filter((e) => e[0] === 'finishPhotoChanged').length === 0);
+  box.emit('finishPhotoUpdate', { data: 'data:image/png;base64,AAAA' });
+  box.emit('finishPhotoUpdate', { data: 'data:image/jpeg;base64,' + Buffer.alloc(300, 1).toString('base64') }); // senza firma JPEG
+  box.emit('finishPhotoUpdate', { data: 'data:image/jpeg;base64,' + 'A'.repeat(950000) });
+  console.log('scartate le non valide:', emitted.filter((e) => e[0] === 'finishPhotoChanged').length === 0);
+  box.emit('finishPhotoUpdate', { data: dati });
+  const ev = emitted.filter((e) => e[0] === 'finishPhotoChanged').pop();
+  console.log('caricata:', !!ev && !!ev[1].at);
+  const g = await get('/foto-finale/flatsix?v=1'); console.log('servita:', g.c, g.len, g.h['Content-Type']);
+  console.log('altra stanza 404:', (await get('/foto-finale/ALTRA')).c);
+  box.emit('finishPhotoUpdate', { data: null });
+  console.log('tolta:', (await get('/foto-finale/FLATSIX')).c, emitted.filter((e) => e[0] === 'finishPhotoChanged').pop()[1].at);
+  // corsia
+  const pts = [{ lat: 45, lng: 9 }, { lat: 45.0001, lng: 9 }, { lat: 45.0002, lng: 9 }];
+  box.emit('gpsConfigUpdate', { corsia: pts, larg: 6 });
+  let c = emitted.filter((e) => e[0] === 'gpsConfigUpdate').pop()[1]; console.log('corsia salvata:', c.corsia.length, c.larg);
+  box.emit('gpsConfigUpdate', { corsia: [{ lat: 1, lng: 1 }] }); box.emit('gpsConfigUpdate', { corsia: [{ lat: 'a', lng: 1 }, { lat: 1, lng: 1 }] });
+  c = emitted.filter((e) => e[0] === 'gpsConfigUpdate').pop()[1]; console.log('corsia non valida ignorata:', c.corsia.length);
+  box.emit('gpsConfigUpdate', { corsia: null }); console.log('corsia tolta:', emitted.filter((e) => e[0] === 'gpsConfigUpdate').pop()[1].corsia);
+  // area rifornimento
+  const last = () => emitted.filter((e) => e[0] === 'gpsConfigUpdate').pop()[1];
+  const poly = [{ lat: 45, lng: 9 }, { lat: 45.0002, lng: 9 }, { lat: 45.0002, lng: 9.0003 }, { lat: 45, lng: 9.0003 }];
+  box.emit('gpsConfigUpdate', { refuelPoly: poly }); console.log('poligono salvato:', last().refuelPoly && last().refuelPoly.length);
+  box.emit('gpsConfigUpdate', { refuelPoly: poly.slice(0, 2) }); console.log('poligono <3 punti ignorato:', last().refuelPoly.length);
+  box.emit('gpsConfigUpdate', { refuelPoly: [{ lat: 'x', lng: 1 }, ...poly] }); console.log('poligono non valido ignorato:', last().refuelPoly.length);
+  auto.emit('gpsConfigUpdate', { refuelPoly: null }); console.log('auto non modifica:', !!last().refuelPoly);
+  box.emit('gpsConfigUpdate', { refuelPoly: null }); console.log('poligono tolto:', last().refuelPoly);
+  // posizione auto
+  const n0 = emitted.filter((e) => e[0] === 'gpsPos').length;
+  auto.emit('gpsPos', { lat: 45.1, lng: 9.1, acc: 5, v: 12.5, t: 1 }); const p = emitted.filter((e) => e[0] === 'gpsPos').pop();
+  console.log('gpsPos senza gps.on ignorato:', emitted.filter((e) => e[0] === 'gpsPos').length === n0);
+  box.emit('gpsConfigUpdate', { on: true });
+  auto.emit('gpsPos', { lat: 45.1, lng: 9.1, acc: 5, v: 12.5, t: 1 }); const q = emitted.filter((e) => e[0] === 'gpsPos').pop();
+  console.log('gpsPos con on:', JSON.stringify(q && q[1]));
+  box.emit('gpsPos', { lat: 1, lng: 1 }); console.log('box non invia pos:', emitted.filter((e) => e[0] === 'gpsPos').length === n0 + 1);
+  const j2 = await new Promise((r) => { const b2 = mk(); io.emit('connection', b2); b2.emit('join', { code: 'FLATSIX', role: 'box' }, r); });
+  console.log('fresh nello stato:', JSON.stringify(j2.state.fresh));
+  // traguardo e giro di riferimento
+  const L = () => emitted.filter((e) => e[0] === 'gpsConfigUpdate').pop()[1];
+  const tr = [{ lat: 45, lng: 9 }, { lat: 45, lng: 9.0005 }];
+  box.emit('gpsConfigUpdate', { traguardo: tr }); console.log('traguardo salvato:', JSON.stringify(L().traguardo && L().traguardo.length));
+  box.emit('gpsConfigUpdate', { traguardo: [{ lat: 45, lng: 9 }, { lat: 45, lng: 9.00001 }] }); console.log('traguardo troppo corto ignorato:', L().traguardo[1].lng);
+  box.emit('gpsConfigUpdate', { traguardo: [{ lat: 45, lng: 9 }] }); console.log('traguardo con 1 punto ignorato:', L().traguardo.length);
+  const giro = { t: 62.8, p: Array.from({ length: 64 }, (_, i) => [45 + i * 1e-5, 9 + i * 1e-5, i]) };
+  auto.emit('gpsGiroRif', giro); console.log('giro dall auto salvato:', !!L().giroRif && L().giroRif.p.length);
+  const n1 = emitted.filter((e) => e[0] === 'gpsConfigUpdate').length;
+  auto.emit('gpsGiroRif', { t: 50, p: giro.p }); console.log('secondo giro entro 20 s ignorato:', emitted.filter((e) => e[0] === 'gpsConfigUpdate').length === n1);
+  box.emit('gpsConfigUpdate', { giroRif: { t: 62.8, p: [[1, 1, 0], [2, 2, 1]] } }); console.log('giro con pochi punti ignorato:', L().giroRif.p.length);
+  box.emit('gpsConfigUpdate', { giroRif: { t: 62.8, p: giro.p.map((q, i) => [q[0], q[1], 63 - i]) } }); console.log('giro con tempi non crescenti ignorato:', L().giroRif.p[1][2]);
+  box.emit('gpsConfigUpdate', { lancioS: 5 }); console.log('lancioS fuori limite ignorato:', L().lancioS);
+  box.emit('gpsConfigUpdate', { lancioS: 180 }); console.log('lancioS 180:', L().lancioS);
+  box.emit('gpsConfigUpdate', { giroRif: null, traguardo: null }); console.log('tolti:', L().giroRif, L().traguardo);
+  box.emit('gpsConfigUpdate', { traguardo: tr }); box.emit('gpsConfigUpdate', { on: false }); auto.emit('gpsGiroRif', giro);
+  console.log('gps spento: giro ignorato:', L().giroRif);
+  process.exit(0);
+})();
