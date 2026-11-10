@@ -212,6 +212,7 @@ function finishFotoScelta(input){
     if(data.length > 800000){ if(msg) msg.textContent = 'Foto troppo pesante: scegline una piu\u2019 piccola.'; return; }
     if(socket && socket.connected){
       socket.emit('finishPhotoUpdate', { data });
+      try{ save('pc_foto_finale', { code, data }); }catch(e){}
       if(msg) msg.textContent = 'Foto caricata (' + Math.round(data.length / 1024) + ' KB). Scegli "Foto squadra" come sfondo per vederla all\u2019arrivo.';
     } else if(msg) msg.textContent = 'Non sono collegato: riprova tra poco.';
   };
@@ -219,8 +220,16 @@ function finishFotoScelta(input){
   img.src = url;
 }
 
+// Se il server e' ripartito e ha perso la foto, il box che l'aveva caricata la rimanda.
+function finishFotoRipristina(state){
+  if(role !== 'box' || !state || !state.fresh || !state.fresh.foto || state.finishPhotoAt) return;
+  const f = load('pc_foto_finale', null);
+  if(f && f.code === code && typeof f.data === 'string' && socket) socket.emit('finishPhotoUpdate', { data: f.data });
+}
+
 function finishFotoPredefinita(){
   if(socket && socket.connected) socket.emit('finishPhotoUpdate', { data: null });
+  save('pc_foto_finale', null);
   const msg = $('finishFotoMsg');
   if(msg) msg.textContent = 'Tornata alla foto predefinita.';
 }

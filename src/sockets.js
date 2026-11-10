@@ -233,6 +233,7 @@ function registra(io) {
       if (!joinedCode || joinedRole !== "box" || !dati || typeof dati !== "object") return;
       const state = getRoomState(joinedCode);
       state.gps = archivio.pulisciGps(state.gps, dati);
+      state.fresh.gps = false;
       io.to(joinedCode).emit("gpsConfigUpdate", state.gps);
     });
 
@@ -242,12 +243,12 @@ function registra(io) {
       if (!joinedCode || joinedRole !== "auto" || !p || typeof p !== "object") return;
       const state = getRoomState(joinedCode);
       if (!state.gps.on) return;
-      const lat = Number(p.lat), lng = Number(p.lng), acc = Number(p.acc);
+      const lat = Number(p.lat), lng = Number(p.lng), acc = Number(p.acc), v = Number(p.v);
       if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
       const ora = Date.now();
       if (ora - ultimaPosizione < 800) return;
       ultimaPosizione = ora;
-      io.to(joinedCode).emit("gpsPos", { lat, lng, acc: Number.isFinite(acc) ? acc : null, t: ora });
+      io.to(joinedCode).emit("gpsPos", { lat, lng, acc: Number.isFinite(acc) ? acc : null, v: Number.isFinite(v) && v >= 0 && v < 200 ? v : null, t: ora });
     });
 
     // Passo gara: riepilogo e storico dei giri della nostra vettura (chi si collega o si
@@ -565,6 +566,7 @@ function registra(io) {
       if (data === null) {
         fotoFinale.delete(joinedCode);
         state.finishPhotoAt = null;
+        state.fresh.foto = false;
         archivio.scriviFoto(joinedCode, null).catch((e) => console.error("foto finale: " + (e.message || e)));
         return io.to(joinedCode).emit("finishPhotoChanged", { at: null });
       }
@@ -575,6 +577,7 @@ function registra(io) {
       const at = Date.now();
       fotoFinale.set(joinedCode, { buf, at });
       state.finishPhotoAt = at;
+      state.fresh.foto = false;
       archivio.scriviFoto(joinedCode, data).catch((e) => console.error("foto finale: " + (e.message || e)));
       io.to(joinedCode).emit("finishPhotoChanged", { at });
     });

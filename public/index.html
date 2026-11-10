@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<link rel="stylesheet" href="css/style.css?v=37" />
+<link rel="stylesheet" href="css/style.css?v=38" />
 </head>
 <body>
 
@@ -150,7 +150,7 @@
       <button class="btn state-btn green" id="btnOnTrack" onclick="setOnTrack(true)">In pista</button>
       <button class="btn state-btn orange" id="btnAtBox" onclick="setOnTrack(false)">Ai box</button>
     </div>
-    <div class="row"><span class="mono" id="gpsRiga" style="font-size:12px;" hidden></span></div>
+    <div class="row"><span class="mono" id="gpsRiga" style="font-size:12px;" hidden></span><button class="btn small" id="gpsMappaBtn" onclick="mappaApri('auto')" hidden>Mappa</button></div>
     <div class="gps-domanda" id="gpsDomanda" hidden>
       <div id="gpsDomandaTesto">Era un cambio pilota?</div>
       <div class="row" style="gap:8px;margin:8px 0 0;">
@@ -297,7 +297,7 @@
       <div class="row"><input type="number" id="aubDriverId" placeholder="Numero di gara della vettura"></div>
       <div class="row" style="display:flex;gap:8px;">
         <button class="btn primary" style="flex:1" onclick="aubConnect(this)">Collega</button>
-        <button class="btn small" style="flex:1" onclick="aubDisconnect()">Scollega</button>
+        <button class="btn" style="flex:1" onclick="aubDisconnect()">Scollega</button>
       </div>
       <details style="margin-top:10px;">
         <summary>Chiave della squadra (solo se il server non ce l'ha già)</summary>
@@ -316,7 +316,7 @@
       <div class="row"><input type="text" id="ponteNumber" placeholder="Numero di gara della vettura" inputmode="numeric" autocomplete="off"></div>
       <div class="row" style="display:flex;gap:8px;">
         <button class="btn primary" style="flex:1" onclick="ponteConnect(this)">Collega</button>
-        <button class="btn small" style="flex:1" onclick="ponteDisconnect()">Scollega</button>
+        <button class="btn" style="flex:1" onclick="ponteDisconnect()">Scollega</button>
       </div>
       <div class="row"><span class="mono" style="font-size:11px;color:var(--muted);">Legge i distacchi dal nostro ponte, che sa leggere i vari siti di live timing, senza passare da AUB. Incolla l'indirizzo della pagina dell'evento e il numero di gara. Se l'evento non è ancora pubblicato resta in attesa.</span></div>
     </div>
@@ -414,51 +414,53 @@
     <div class="row"><span>Questo telefono applica lo stato in pista / ai box</span>
       <label class="toggle"><input type="checkbox" id="gpsApplica" onchange="gpsApplicaToggle(this.checked)"><span class="knob"></span></label>
     </div>
-    <div class="row" style="flex-wrap:wrap;gap:8px;">
+    <div class="row"><button class="btn primary" style="width:100%" onclick="mappaApri('rifornimento')">Apri la mappa e disegna le zone</button></div>
+    <div class="row gps-griglia">
       <button class="btn small" onclick="gpsImpostaZona('box', this)">Zona BOX = qui</button>
-      <button class="btn small" onclick="gpsImpostaZona('refuel', this)">Zona RIFORNIMENTO = qui</button>
+      <button class="btn small" onclick="gpsImpostaZona('refuel', this)">Cerchio rifornimento qui</button>
       <button class="btn small" onclick="gpsRegistraCorsia(this)">Registra corsia box</button>
+      <button class="btn small" onclick="mappaApri('auto')">Mappa dell’auto</button>
     </div>
     <div class="row"><span class="mono" id="gpsZone" style="font-size:12px;">Zona box: non impostata · Zona rifornimento: non impostata</span></div>
-    <div class="row al-riga"><span>Raggio zona box (m)</span><span></span>
+    <div class="row val-riga"><span>Raggio zona box (m)</span>
       <input type="number" id="gpsRBox" min="3" max="200" step="1" style="text-align:center;" onchange="gpsNumero('rBox', this, 3, 200)">
     </div>
-    <div class="row al-riga"><span>Raggio zona rifornimento (m)</span><span></span>
+    <div class="row val-riga"><span>Raggio zona rifornimento (m)</span>
       <input type="number" id="gpsRRefuel" min="3" max="300" step="1" style="text-align:center;" onchange="gpsNumero('rRefuel', this, 3, 300)">
     </div>
-    <div class="row al-riga"><span>Tolleranza dalla linea della corsia (m)</span><span></span>
+    <div class="row val-riga"><span>Tolleranza dalla linea della corsia (m)</span>
       <input type="number" id="gpsLarg" min="2" max="40" step="1" style="text-align:center;" onchange="gpsNumero('larg', this, 2, 40)">
     </div>
-    <div class="row al-riga"><span>Auto ferma in corsia oltre (s): chiede se è un cambio pilota</span><span></span>
+    <div class="row val-riga"><span>Auto ferma in corsia oltre (s): chiede se è un cambio pilota</span>
       <input type="number" id="gpsFermoS" min="5" max="900" step="5" style="text-align:center;" onchange="gpsNumero('fermoS', this, 5, 900)">
     </div>
-    <div class="row" style="flex-wrap:wrap;gap:8px;">
+    <div class="row gps-griglia">
       <button class="btn small" onclick="gpsAllineaOra()">Allinea ora al GPS</button>
       <button class="btn small" onclick="gpsRegistraCambio()">Segna cambio pilota</button>
       <button class="btn small" onclick="gpsAzzeraCambi()">Azzera turno pilota</button>
       <button class="btn small" onclick="gpsCancellaZone(this)">Cancella zone e corsia</button>
     </div>
     <div class="row"><span class="mono" id="gpsMsg" style="font-size:11px;color:var(--muted);line-height:1.4;"></span></div>
-    <div class="row"><span class="mono" style="font-size:11px;color:var(--muted);line-height:1.4;">Con il GPS acceso il telefono dell'auto manda la posizione e il box passa da solo tra in pista, ai box e rifornimento (serve restare nella zona circa 10 secondi). I pulsanti "In pista" e "Ai box" funzionano sempre e correggono a mano. Imposta le zone stando fermo nel punto, all'aperto. Per la corsia box premi "Registra corsia box", percorrila dall'ingresso all'uscita e premi di nuovo: se l'auto resta ferma lungo la corsia oltre la soglia, il box chiede se era un cambio pilota.</span></div>
+    <div class="row"><span class="mono" style="font-size:11px;color:var(--muted);line-height:1.4;">Con il GPS acceso il telefono dell'auto manda la posizione e il box passa da solo tra in pista, ai box e rifornimento (serve restare nella zona circa 10 secondi). I pulsanti "In pista" e "Ai box" funzionano sempre e correggono a mano. Imposta le zone stando fermo nel punto, all'aperto. Il modo piu' comodo e' "Apri la mappa": disegni l'area di rifornimento, la zona box e la corsia toccando la mappa. In alternativa "Registra corsia box", percorrila dall'ingresso all'uscita e premi di nuovo: se l'auto resta ferma lungo la corsia oltre la soglia, il box chiede se era un cambio pilota.</span></div>
   </div>
   <div class="card">
     <h3>Allarmi di gara</h3>
-    <div class="row al-riga"><span>Attivi (spenti all'inizio)</span>
+    <div class="row al-riga al-sola"><span>Attivi (spenti all'inizio)</span>
       <label class="toggle"><input type="checkbox" id="alOn" onchange="crImpostaAllarme('on', this.checked)"><span class="knob"></span></label>
     </div>
     <div class="row al-riga"><span>Dietro vicino, entro (s)</span>
+            <input type="number" id="alDietroS" step="0.5" min="0.5" style="width:70px;text-align:center;" onchange="crVal(this,'dietroS')">
       <label class="toggle"><input type="checkbox" id="alDietro" onchange="crImpostaAllarme('dietro', this.checked)"><span class="knob"></span></label>
-      <input type="number" id="alDietroS" step="0.5" min="0.5" style="width:70px;text-align:center;" onchange="crVal(this,'dietroS')">
     </div>
     <div class="row al-riga"><span>Passo calato di oltre (s)</span>
+            <input type="number" id="alPassoS" step="0.1" min="0.1" style="width:70px;text-align:center;" onchange="crVal(this,'passoS')">
       <label class="toggle"><input type="checkbox" id="alPasso" onchange="crImpostaAllarme('passo', this.checked)"><span class="knob"></span></label>
-      <input type="number" id="alPassoS" step="0.1" min="0.1" style="width:70px;text-align:center;" onchange="crVal(this,'passoS')">
     </div>
     <div class="row al-riga"><span>Giro piu' lento di oltre (s)</span>
+            <input type="number" id="alLentoS" step="0.1" min="0.1" style="width:70px;text-align:center;" onchange="crVal(this,'lentoS')">
       <label class="toggle"><input type="checkbox" id="alLento" onchange="crImpostaAllarme('lento', this.checked)"><span class="knob"></span></label>
-      <input type="number" id="alLentoS" step="0.1" min="0.1" style="width:70px;text-align:center;" onchange="crVal(this,'lentoS')">
     </div>
-    <div class="row al-riga"><span>Rivale di categoria dietro ti raggiunge entro la fine</span>
+    <div class="row al-riga al-sola"><span>Rivale di categoria dietro ti raggiunge entro la fine</span>
       <label class="toggle"><input type="checkbox" id="alRimonta" onchange="crImpostaAllarme('rimonta', this.checked)"><span class="knob"></span></label>
     </div>
     <div class="row al-nota"><span class="mono" style="font-size:11px;color:var(--muted);line-height:1.4;">Suonano un bip e vibrano solo su questo box, e solo dopo circa 10 giri validi. Ogni avviso scatta una volta e si riarma quando la situazione torna normale. Valgono per questo telefono.</span></div>
@@ -499,19 +501,36 @@
 <!-- Script semplici, non moduli: l'ordine di caricamento e' quello delle
      dipendenze, e le funzioni restano globali come le vogliono gli onclick
      scritti nel markup. core.js per primo, app.js per ultimo. -->
-<script src="js/core.js?v=37"></script>
-<script src="js/push.js?v=37"></script>
-<script src="js/connection.js?v=37"></script>
-<script src="js/autoview.js?v=37"></script>
-<script src="js/fuel.js?v=37"></script>
-<script src="js/boxview.js?v=37"></script>
-<script src="js/timing.js?v=37"></script>
-<script src="js/passo.js?v=37"></script>
-<script src="js/cruscotto.js?v=37"></script>
-<script src="js/gps.js?v=37"></script>
-<script src="js/race.js?v=37"></script>
-<script src="js/timer.js?v=37"></script>
-<script src="js/install.js?v=37"></script>
-<script src="js/app.js?v=37"></script>
+<div id="mappaGps" class="mp" hidden>
+  <div class="mp-top">
+    <button class="btn small" onclick="mappaChiudi()">✕ Chiudi</button>
+    <div class="mp-titolo">Mappa</div>
+    <button class="btn small" id="mpSfondo" onclick="mappaCambiaSfondo()">Mappa</button>
+  </div>
+  <div class="box-tabs mp-modi" id="mpModi">
+    <button class="tab on" data-modo="auto" onclick="mpVaiA('auto')">Auto</button>
+    <button class="tab" data-modo="box" onclick="mpVaiA('box')">Box</button>
+    <button class="tab" data-modo="rifornimento" onclick="mpVaiA('rifornimento')">Rifornim.</button>
+    <button class="tab" data-modo="corsia" onclick="mpVaiA('corsia')">Corsia</button>
+  </div>
+  <div id="mpCanvas"></div>
+  <div class="mp-info mono" id="mpInfo"></div>
+  <div class="mp-panel" id="mpPannello"></div>
+</div>
+<script src="js/core.js?v=38"></script>
+<script src="js/push.js?v=38"></script>
+<script src="js/connection.js?v=38"></script>
+<script src="js/autoview.js?v=38"></script>
+<script src="js/fuel.js?v=38"></script>
+<script src="js/boxview.js?v=38"></script>
+<script src="js/timing.js?v=38"></script>
+<script src="js/passo.js?v=38"></script>
+<script src="js/cruscotto.js?v=38"></script>
+<script src="js/gps.js?v=38"></script>
+<script src="js/mappa.js?v=38"></script>
+<script src="js/race.js?v=38"></script>
+<script src="js/timer.js?v=38"></script>
+<script src="js/install.js?v=38"></script>
+<script src="js/app.js?v=38"></script>
 </body>
 </html>

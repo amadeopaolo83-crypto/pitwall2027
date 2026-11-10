@@ -21,7 +21,7 @@ const GPS_USCITA_EXTRA = 5;    // metri in piu' per uscire da una zona in cui si
 const GPS_FERMO_M = 6;         // metri: entro tanto dal punto di sosta si considera fermo
 const GPS_PASSO_REG_M = 3;     // registrazione corsia: un punto ogni tanti metri
 
-let gpsCfg = { on: false, box: null, refuel: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 60 };
+let gpsCfg = { on: false, box: null, refuel: null, refuelPoly: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 60 };
 let gpsUltima = null;          // ultimo punto ricevuto { lat, lng, acc, t }
 let gpsUltimaBuona = 0;        // quando e' arrivato l'ultimo punto preciso
 let gpsStato = null;           // 'pista' | 'box' | 'rifornimento' (confermato)
@@ -33,6 +33,8 @@ let gpsCambio = load('pc_gps_cambio', { n: 0, da: null }); // cambi pilota regis
 let gpsCambioFatto = false;    // alla domanda di questa sosta si e' gia' risposto
 let gpsChiede = false;         // la domanda "era un cambio pilota?" e' sul box
 let gpsAncora = null, gpsAncoraDa = 0; // dove e da quando l'auto e' ferma
+let gpsScia = [];              // ultimi punti dell'auto (per la scia sulla mappa)
+let gpsVel = null;             // velocita' dell'auto in m/s (se si conosce)
 let gpsInCorsia = false;       // l'ultimo punto preciso e' dentro la corsia box
 
 function gpsApplica(){ try{ return localStorage.getItem('pc_gps_applica') === '1'; }catch(e){ return false; } }
@@ -46,10 +48,28 @@ function gpsDistanza(a, b){
 
 // ---------- configurazione (condivisa dalla squadra) ----------
 
-function gpsApplicaConfig(c){
+// Il box si tiene una copia delle zone: se il server riparte a meta' gara (Render) gliele rimanda.
+function gpsSalvaCopia(){
+  if(role !== 'box') return;
+  const vuota = !gpsCfg.box && !gpsCfg.refuel && !gpsCfg.refuelPoly && !gpsCfg.corsia;
+  save('pc_gps_cfg', { code, cfg: vuota ? null : gpsCfg });
+}
+
+function gpsRipristinaSeServerVuoto(state){
+  const fresh = state && state.fresh ? state.fresh : {};
+  if(role !== 'box' || !fresh.gps) return false;
+  const copia = load('pc_gps_cfg', null);
+  if(!copia || copia.code !== code || !copia.cfg) return false;
+  gpsInvia(copia.cfg);
+  return true;
+}
+
+function gpsApplicaConfig(c, nonSalvare){
   if(!c || typeof c !== 'object') return;
   gpsCfg = { ...gpsCfg, ...c };
-  if(!gpsCfg.on){ gpsStato = null; gpsCandidato = null; gpsCambioFatto = false; gpsChiede = false; gpsAncora = null; }
+  if(!nonSalvare) gpsSalvaCopia();
+  if(typeof mappaConfigCambiata === 'function') mappaConfigCambiata();
+  if(!gpsCfg.on){ gpsStato = null; gpsCandidato = null; gpsCambioFatto = false; gpsChiede = false; gpsAncora = null; gpsScia = []; }
   if(role === 'auto') gpsAggiornaInvio();
   gpsRender();
 }
@@ -86,7 +106,7 @@ function gpsAggiornaInvio(){
       if(ora - gpsInvioUltimo < 1000) return;
       gpsInvioUltimo = ora;
       if(socket && socket.connected){
-        socket.emit('gpsPos', { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy });
+        socket.emit('gpsPos', { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy, v: pos.coords.speed });
       }
     }, () => { /* nessun permesso o nessun segnale: si riprova da soli */ },
     { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
@@ -163,27 +183,72 @@ function gpsCancellaZone(btn){
   }
   gpsCancellaPronto = false;
   btn.textContent = 'Cancella zone e corsia';
-  gpsInvia({ box: null, refuel: null, corsia: null });
+  gpsInvia({ box: null, refuel: null, refuelPoly: null, corsia: null });
 }
 
 // ---------- box: riceve la posizione e decide ----------
 
+// ---------- area (poligono) ----------
+
+// Punti in metri attorno a un riferimento (proiezione locale: basta per aree di pochi centinaia di metri).
+function gpsProietta(poly, rif){
+  const k = Math.PI / 180, mLat = 111320, mLng = 111320 * Math.cos(rif.lat * k);
+  return poly.map((q) => ({ x: (q.lng - rif.lng) * mLng, y: (q.lat - rif.lat) * mLat }));
+}
+
+// Il punto e' dentro l'area? (regola pari-dispari)
+function gpsInPoligono(p, poly){
+  if(!poly || poly.length < 3) return false;
+  const q = gpsProietta(poly, p);
+  let dentro = false;
+  for(let i = 0, j = q.length - 1; i < q.length; j = i++){
+    if((q[i].y > 0) !== (q[j].y > 0) && 0 < (q[j].x - q[i].x) * (0 - q[i].y) / (q[j].y - q[i].y) + q[i].x) dentro = !dentro;
+  }
+  return dentro;
+}
+
+// Distanza in metri dal bordo dell'area.
+function gpsDistBordo(p, poly){
+  if(!poly || poly.length < 2) return Infinity;
+  const q = gpsProietta(poly, p);
+  let min = Infinity;
+  for(let i = 0; i < q.length; i++){
+    const a = q[i], b = q[(i + 1) % q.length];
+    const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
+    const t = l2 > 0 ? Math.max(0, Math.min(1, -(a.x * dx + a.y * dy) / l2)) : 0;
+    min = Math.min(min, Math.hypot(a.x + t * dx, a.y + t * dy));
+  }
+  return min;
+}
+
 function gpsZonaDi(p){
   const dB = gpsCfg.box ? gpsDistanza(p, gpsCfg.box) : Infinity;
-  const dR = gpsCfg.refuel ? gpsDistanza(p, gpsCfg.refuel) : Infinity;
   // chi e' gia' in una zona ne esce solo un po' piu' in la', cosi' il bordo non fa lampeggiare lo stato
   const rB = gpsCfg.rBox + (gpsStato === 'box' ? GPS_USCITA_EXTRA : 0);
-  const rR = gpsCfg.rRefuel + (gpsStato === 'rifornimento' ? GPS_USCITA_EXTRA : 0);
   if(dB <= rB) return 'box';
-  if(dR <= rR) return 'rifornimento';
+  let inRif = false;
+  if(gpsCfg.refuelPoly){
+    inRif = gpsInPoligono(p, gpsCfg.refuelPoly) || (gpsStato === 'rifornimento' && gpsDistBordo(p, gpsCfg.refuelPoly) <= GPS_USCITA_EXTRA);
+  } else if(gpsCfg.refuel){
+    inRif = gpsDistanza(p, gpsCfg.refuel) <= gpsCfg.rRefuel + (gpsStato === 'rifornimento' ? GPS_USCITA_EXTRA : 0);
+  }
+  if(inRif) return 'rifornimento';
   return 'pista';
 }
 
 function gpsRicevi(p){
   if(role !== 'box' || !gpsCfg.on || !p) return;
+  const prec = !(p.acc != null && p.acc > GPS_ACC_MAX);
+  if(prec){
+    const prima = gpsUltima;
+    gpsVel = Number.isFinite(p.v) ? p.v : (prima && p.t > prima.t ? gpsDistanza(prima, p) / ((p.t - prima.t) / 1000) : null);
+    gpsScia.push({ lat: p.lat, lng: p.lng });
+    if(gpsScia.length > 300) gpsScia.shift();
+  }
   gpsUltima = p;
-  if(p.acc != null && p.acc > GPS_ACC_MAX) return;
-  if(!gpsCfg.box && !gpsCfg.refuel) return; // senza zone non si decide niente
+  if(typeof mappaAuto === 'function') mappaAuto(prec);
+  if(!prec) return;
+  if(!gpsCfg.box && !gpsCfg.refuel && !gpsCfg.refuelPoly) return; // senza zone non si decide niente
   gpsUltimaBuona = Date.now();
   const cand = gpsZonaDi(p);
   const ora = Date.now();
@@ -289,7 +354,7 @@ function gpsRiga(){
   const ora = Date.now();
   const nomi = { pista: 'in pista', box: 'ai box', rifornimento: 'rifornimento' };
   let t = 'GPS: ';
-  if(!gpsCfg.box && !gpsCfg.refuel) return t + 'imposta le zone';
+  if(!gpsCfg.box && !gpsCfg.refuel && !gpsCfg.refuelPoly) return t + 'imposta le zone';
   if(!gpsUltima || ora - gpsUltimaBuona > GPS_PERSO_MS){
     t += gpsUltima ? 'segnale perso da ' + gpsMinSec(ora - gpsUltimaBuona) : 'in attesa dell’auto';
     if(gpsStato) t += ' · ultimo: ' + nomi[gpsStato];
@@ -311,10 +376,11 @@ function gpsRender(){
   const riga = $('gpsRiga');
   if(riga){ riga.textContent = gpsRiga(); riga.hidden = !gpsCfg.on; }
   if($('gpsOn')) $('gpsOn').checked = !!gpsCfg.on;
+  if($('gpsMappaBtn')) $('gpsMappaBtn').hidden = !gpsCfg.on;
   if($('gpsApplica')) $('gpsApplica').checked = gpsApplica();
   const f = (id, v) => { const e = $(id); if(e && document.activeElement !== e) e.value = v; };
   f('gpsRBox', gpsCfg.rBox); f('gpsRRefuel', gpsCfg.rRefuel); f('gpsFermoS', gpsCfg.fermoS); f('gpsLarg', gpsCfg.larg);
-  if($('gpsZone')) $('gpsZone').textContent = 'Zona box: ' + (gpsCfg.box ? 'impostata' : 'non impostata') + ' \u00b7 Zona rifornimento: ' + (gpsCfg.refuel ? 'impostata' : 'non impostata') + ' \u00b7 Corsia box: ' + (gpsCfg.corsia ? 'registrata (' + Math.round(gpsLunghezza(gpsCfg.corsia)) + ' m)' : 'non registrata');
+  if($('gpsZone')) $('gpsZone').textContent = 'Zona box: ' + (gpsCfg.box ? 'impostata' : 'non impostata') + ' \u00b7 Rifornimento: ' + (gpsCfg.refuelPoly ? 'area (' + gpsCfg.refuelPoly.length + ' punti)' : gpsCfg.refuel ? 'cerchio' : 'non impostato') + ' \u00b7 Corsia box: ' + (gpsCfg.corsia ? 'registrata (' + Math.round(gpsLunghezza(gpsCfg.corsia)) + ' m)' : 'non registrata');
 }
 
 setInterval(() => {

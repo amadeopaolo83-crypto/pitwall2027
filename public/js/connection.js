@@ -184,7 +184,12 @@ function applyState(state){
   applyAutoLayout(state.autoLayout || 'telefono');
   applySogliaGap(state.sogliaGap);
   if(typeof applyFinishPhoto === 'function') applyFinishPhoto(state.finishPhotoAt);
-  if(typeof gpsApplicaConfig === 'function') gpsApplicaConfig(state.gps);
+  if(typeof gpsApplicaConfig === 'function'){
+    const serverVuoto = !!(state.fresh && state.fresh.gps);
+    gpsApplicaConfig(state.gps, serverVuoto); // se il server e' ripartito, la copia del box resta quella buona
+    if(typeof gpsRipristinaSeServerVuoto === 'function') gpsRipristinaSeServerVuoto(state);
+  }
+  if(typeof finishFotoRipristina === 'function') finishFotoRipristina(state);
   if(state.timing) renderTiming(state.timing);
   if(state.aub) renderAubStatus(state.aub);
   if(state.ponte) renderPonteStatus(state.ponte);

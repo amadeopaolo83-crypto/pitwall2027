@@ -40,7 +40,7 @@ function getRoomState(code) {
       sogliaGap: 0.1, // secondi: di quanto deve cambiare un distacco prima che cambi colore (0.1, 0.25, 0.5, 1)
       // GPS e automatismi (spenti all'inizio): zona del box e zona del rifornimento, con il
       // raggio in metri. Lo imposta il box; la posizione la manda il telefono dell'auto.
-      gps: { on: false, box: null, refuel: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 60 }, // corsia: percorso registrato della corsia box; larg: metri di tolleranza dalla linea; fermoS: secondi fermi in corsia oltre i quali si chiede se e' un cambio pilota
+      gps: { on: false, box: null, refuel: null, refuelPoly: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 60 }, // refuelPoly: area di rifornimento disegnata sulla mappa (ha la precedenza sul cerchio refuel+rRefuel); // corsia: percorso registrato della corsia box; larg: metri di tolleranza dalla linea; fermoS: secondi fermi in corsia oltre i quali si chiede se e' un cambio pilota
       finishPhotoAt: null, // quando e' stata caricata la foto finale della squadra (null = quella predefinita)
       lastFlash: null,
       // Messaggi dall'auto, i piu' recenti: li riceve chi si ricollega (per esempio
@@ -114,7 +114,7 @@ function getRoomState(code) {
       },
       // true finche' nessun dispositivo ha rimandato i propri valori dopo un
       // riavvio del server; si spegne da solo, una voce alla volta.
-      fresh: { fuel: true, buttons: true, race: true, ponte: true, timerSrc: true, aub: true, layout: true, soglia: true },
+      fresh: { fuel: true, buttons: true, race: true, ponte: true, timerSrc: true, aub: true, layout: true, soglia: true, gps: true, foto: true },
     });
   }
   return rooms.get(code);

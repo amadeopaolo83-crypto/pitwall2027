@@ -115,6 +115,7 @@ async function caricaFoto(code, S) {
         const at = Date.now();
         fotoFinale.set(code, { buf, at });
         S.finishPhotoAt = at;
+        S.fresh.foto = false;
       }
     }
   } catch (e) { console.error("archivio: lettura della foto di " + code + " non riuscita: " + (e.message || e)); }
@@ -154,6 +155,10 @@ function pulisciGps(attuali, d) {
   if (d.refuel === null) g.refuel = null; else if (punto(d.refuel)) g.refuel = { lat: d.refuel.lat, lng: d.refuel.lng };
   if (Number.isFinite(d.rBox) && d.rBox >= 3 && d.rBox <= 200) g.rBox = d.rBox;
   if (Number.isFinite(d.rRefuel) && d.rRefuel >= 3 && d.rRefuel <= 300) g.rRefuel = d.rRefuel;
+  if (d.refuelPoly === null) g.refuelPoly = null;
+  else if (Array.isArray(d.refuelPoly) && d.refuelPoly.length >= 3 && d.refuelPoly.length <= 80 && d.refuelPoly.every(punto)) {
+    g.refuelPoly = d.refuelPoly.map((q) => ({ lat: q.lat, lng: q.lng }));
+  }
   if (d.corsia === null) g.corsia = null;
   else if (Array.isArray(d.corsia) && d.corsia.length >= 2 && d.corsia.length <= 600 && d.corsia.every(punto)) {
     g.corsia = d.corsia.map((q) => ({ lat: q.lat, lng: q.lng }));
@@ -187,7 +192,7 @@ function applica(S, d) {
   if (d.timingView === "assoluta" || d.timingView === "categoria") S.timingView = d.timingView;
   if (d.autoLayout === "telefono" || d.autoLayout === "tablet") { S.autoLayout = d.autoLayout; S.fresh.layout = false; }
   if ([0.1, 0.25, 0.5, 1].includes(d.sogliaGap)) { S.sogliaGap = d.sogliaGap; S.fresh.soglia = false; }
-  if (d.gps && typeof d.gps === "object") S.gps = pulisciGps(S.gps, d.gps);
+  if (d.gps && typeof d.gps === "object") { S.gps = pulisciGps(S.gps, d.gps); S.fresh.gps = false; }
   const t = d.raceTimer;
   if (t && typeof t === "object") {
     const R = S.raceTimer;
