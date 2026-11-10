@@ -31,7 +31,13 @@ import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebViewClient;
+import android.webkit.WebViewRenderProcess;
+import android.webkit.WebViewRenderProcessClient;
+import android.os.Handler;
+import android.os.Looper;
+import org.json.JSONObject;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -54,7 +60,13 @@ public class MainActivity extends Activity {
     private static final int RC_POSIZIONE = 2;
 
     private SharedPreferences prefs;
+    private FrameLayout radice;
     private WebView web;
+    // Pagina bloccata o caduta: quante volte di fila, per non ricaricare all'infinito.
+    private final long[] cadute = new long[4];
+    private int nCadute = 0;
+    private long bloccataDa = 0;
+    private boolean permessiInCorso = false;
     private LinearLayout schermataIndirizzo;
     private TextView messaggio;
     private EditText campoUrl;
@@ -72,7 +84,7 @@ public class MainActivity extends Activity {
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        FrameLayout radice = new FrameLayout(this);
+        radice = new FrameLayout(this);
         radice.setBackgroundColor(0xFF0B0D0F);
         web = creaWebView();
         schermataIndirizzo = creaSchermataIndirizzo();
@@ -81,9 +93,9 @@ public class MainActivity extends Activity {
         setContentView(radice);
 
         creaCanaleAvvisi();
-        chiediPermessi();
         avviaServizio();
-        chiediNessunRisparmioBatteria();
+        // Tutti i permessi subito all'avvio (notifiche e posizione), non in pista; poi la batteria.
+        if (!chiediPermessi()) chiediNessunRisparmioBatteria();
 
         apri(prefs.getString(KEY_URL, URL_PREDEFINITO));
     }
@@ -98,7 +110,7 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false); // la sirena deve poter suonare da sola
         s.setGeolocationEnabled(true);
-        s.setUserAgentString(s.getUserAgentString() + " PitCommAndroid/1.1");
+        s.setUserAgentString(s.getUserAgentString() + " PitCommAndroid/1.2");
         w.addJavascriptInterface(new Ponte(), "PitCommAndroid");
         w.setWebViewClient(new WebViewClient() {
             @Override
@@ -113,7 +125,34 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView v, String url) {
                 if (!errorePagina) schermataIndirizzo.setVisibility(View.GONE);
             }
+
+            // Il motore della pagina e' caduto (memoria, errore) o lo abbiamo fermato perche'
+            // bloccato: senza questo l'app si chiuderebbe. Si crea una pagina nuova e si ricarica;
+            // la web app si ricollega da sola alla stanza (codice e ruolo sono salvati).
+            @Override
+            public boolean onRenderProcessGone(WebView v, RenderProcessGoneDetail d) {
+                if (v != web) return true;
+                ricreaPagina();
+                return true;
+            }
         });
+        // Pagina bloccata (non risponde) da piu' di 10 s: si ferma il suo processo, e
+        // onRenderProcessGone qui sopra la ricrea. Solo Android 10+.
+        if (Build.VERSION.SDK_INT >= 29) {
+            w.setWebViewRenderProcessClient(new WebViewRenderProcessClient() {
+                @Override
+                public void onRenderProcessUnresponsive(WebView v, WebViewRenderProcess r) {
+                    long ora = System.currentTimeMillis();
+                    if (bloccataDa == 0) bloccataDa = ora;
+                    else if (ora - bloccataDa > 10000 && r != null) { bloccataDa = 0; r.terminate(); }
+                }
+
+                @Override
+                public void onRenderProcessResponsive(WebView v, WebViewRenderProcess r) {
+                    bloccataDa = 0;
+                }
+            });
+        }
         w.setWebChromeClient(new WebChromeClient() {
             // Scelta di un file (la foto finale): apre il selettore di immagini del telefono.
             @Override
@@ -134,12 +173,16 @@ public class MainActivity extends Activity {
 
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
-                if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                if (KeepAliveService.posizioneConcessa(MainActivity.this)) {
                     callback.invoke(origin, true, false);
                 } else {
                     posizioneOrigine = origin;
                     posizioneRichiamo = callback;
-                    requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, RC_POSIZIONE);
+                    // se la richiesta dell'avvio e' ancora aperta si aspetta la sua risposta
+                    if (!permessiInCorso) {
+                        permessiInCorso = true;
+                        requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, RC_POSIZIONE);
+                    }
                 }
             }
         });
@@ -150,6 +193,29 @@ public class MainActivity extends Activity {
         errorePagina = false;
         schermataIndirizzo.setVisibility(View.GONE);
         web.loadUrl(url);
+    }
+
+    private void ricreaPagina() {
+        long ora = System.currentTimeMillis();
+        cadute[nCadute % cadute.length] = ora;
+        nCadute++;
+        String url = prefs.getString(KEY_URL, URL_PREDEFINITO);
+        try {
+            if (web != null) {
+                radice.removeView(web);
+                web.destroy();
+            }
+        } catch (Exception e) { /* gia' distrutta */ }
+        web = creaWebView();
+        radice.addView(web, 0, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        // Quattro cadute in due minuti: si smette di ricaricare da soli e si mostra il motivo.
+        boolean troppe = nCadute >= cadute.length && ora - cadute[nCadute % cadute.length] < 120000;
+        if (troppe) {
+            errorePagina = true;
+            mostraIndirizzo("La pagina si e' bloccata piu' volte. Premi Riprova (o riavvia il telefono).");
+        } else {
+            new Handler(Looper.getMainLooper()).postDelayed(() -> apri(url), 500);
+        }
     }
 
     // ---------- scelta dell'indirizzo ----------
@@ -212,20 +278,35 @@ public class MainActivity extends Activity {
 
     // ---------- permessi, servizio, batteria ----------
 
-    private void chiediPermessi() {
+    /** Chiede insieme notifiche e posizione, se mancano. Vero se ha aperto la richiesta. */
+    private boolean chiediPermessi() {
+        java.util.ArrayList<String> mancano = new java.util.ArrayList<>();
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, RC_PERMESSI);
+            mancano.add(Manifest.permission.POST_NOTIFICATIONS);
         }
+        if (!KeepAliveService.posizioneConcessa(this)) {
+            mancano.add(Manifest.permission.ACCESS_FINE_LOCATION);
+            mancano.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+        }
+        if (mancano.isEmpty()) return false;
+        permessiInCorso = true;
+        requestPermissions(mancano.toArray(new String[0]), RC_PERMESSI);
+        return true;
     }
 
     @Override
     public void onRequestPermissionsResult(int codice, String[] permessi, int[] esiti) {
         super.onRequestPermissionsResult(codice, permessi, esiti);
-        if (codice == RC_POSIZIONE && posizioneRichiamo != null) {
-            boolean ok = esiti.length > 0 && esiti[0] == PackageManager.PERMISSION_GRANTED;
-            posizioneRichiamo.invoke(posizioneOrigine, ok, false);
+        permessiInCorso = false;
+        boolean posizione = KeepAliveService.posizioneConcessa(this);
+        // La pagina aspettava la posizione: si risponde con lo stato vero del permesso.
+        if (posizioneRichiamo != null) {
+            posizioneRichiamo.invoke(posizioneOrigine, posizione, false);
             posizioneRichiamo = null;
         }
+        // Posizione appena concessa: il servizio si riavvia per diventare anche di tipo "location".
+        if (posizione) avviaServizio();
+        if (codice == RC_PERMESSI) chiediNessunRisparmioBatteria();
     }
 
     @Override
@@ -240,7 +321,9 @@ public class MainActivity extends Activity {
     }
 
     private void avviaServizio() {
-        startForegroundService(new Intent(this, KeepAliveService.class));
+        try {
+            startForegroundService(new Intent(this, KeepAliveService.class));
+        } catch (Exception e) { /* avvio rifiutato dal sistema: l'app funziona lo stesso in primo piano */ }
     }
 
     // Senza questo Android puo' fermare l'app a schermo spento per risparmiare batteria.
@@ -334,6 +417,24 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versione() { return "1.1"; }
+        public String versione() { return "1.2"; }
+
+        /** Stato dei permessi del telefono, per mostrarlo nella pagina: JSON. */
+        @JavascriptInterface
+        public String stato() {
+            try {
+                PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                JSONObject j = new JSONObject();
+                j.put("versione", "1.2");
+                j.put("notifiche", getSystemService(NotificationManager.class).areNotificationsEnabled());
+                j.put("posizione", KeepAliveService.posizioneConcessa(MainActivity.this));
+                j.put("posizionePrecisa", checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED);
+                j.put("batteriaLibera", pm.isIgnoringBatteryOptimizations(getPackageName()));
+                j.put("ripartenzePagina", nCadute);
+                return j.toString();
+            } catch (Exception e) {
+                return "{}";
+            }
+        }
     }
 }

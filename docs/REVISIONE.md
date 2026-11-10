@@ -37,6 +37,21 @@ Per attivare il PIN: su Render → Environment → `BOX_PIN` (numeri, 4-8 cifre)
 - **socket.io servito dal nostro server** (`/socket.io/socket.io.js`), con la CDN solo come riserva.
 - Prove nuove: `riavvio.js` (24 controlli), `riavvio-client.js`, `xss.js`. Restano da fare i punti 8-15 della revisione e la tappa 2 (prove su GitHub).
 
+### Tappe 2, 3 e 4 della revisione di Claude Code
+- **Tappa 2, prove su GitHub**: `.github/workflows/prove.yml` esegue `node tools/prove/tutte.js` a ogni modifica di `main`
+  (15 prove: server, pagina, sorgenti Android, vista auto identica a pitwallnew, che si legge e basta). Tutti gli script
+  hanno percorsi relativi e controlli veri (codice di uscita 1 se qualcosa non va). Provato in locale: tutte bene, e con un
+  difetto messo apposta (tocchi a 40 px) il riepilogo diventa rosso.
+- **Tappa 3, APK 1.2**: servizio in primo piano anche di tipo `location` quando la posizione e' concessa (permesso
+  `FOREGROUND_SERVICE_LOCATION`), con ripiego sul tipo normale se il sistema lo rifiuta; permessi di notifiche e posizione
+  chiesti subito all'avvio, poi l'esclusione dal risparmio batteria; se il motore della pagina cade o resta bloccato piu'
+  di 10 s (Android 10+) si ricrea la pagina e si ricarica (dopo 4 cadute in 2 minuti si ferma e lo dice); nuovo
+  `PitCommAndroid.stato()` (permessi, batteria, ripartenze). Controllato: il Java compila contro le classi di Android 14,
+  `apk.js`; la compilazione vera la fa `android.yml`. **Non provato su un telefono.**
+- **Tappa 4, tocchi nel box a 52 px** (solo CSS dentro `#boxView`): pulsanti, campi, colori, interruttori (zona di tocco
+  54x52, stesso disegno); messaggi a schermo intero su due righe. `tocchi.js`: 136 tocchi su 4 schede, telefono 360/390,
+  orizzontale, tablet, giorno e notte, tutti >= 52 px, niente fuori dal riquadro. Vista auto identica (audit).
+
 ## 3. Architettura: tre strade
 - **A (consigliata, poco lavoro):** restare cosi', attivare `BOX_PIN`, configurare l'archivio (Upstash) anche su Pitwall2027, passare Render a un piano che non si addormenta. Costo: pochi euro al mese e mezz'ora.
 - **B (media):** salvare ogni 30-60 s uno "snapshot" della gara (timer, carburante, giri, passo, ultimo stato in pista/box) nell'archivio, cosi' un riavvio di Render e' invisibile. Costo: uno o due giorni di lavoro e prove. Vale la pena prima della prossima 24 ore.

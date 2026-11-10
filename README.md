@@ -13,6 +13,9 @@ Quando la versione di prova funziona, si passa a questa: basta cambiare il repos
 Involucro Android di PitComm: apre la web app (indirizzo scelto al primo avvio, cambiabile dal tasto indietro),
 tiene lo schermo acceso, resta attivo a schermo spento (servizio in primo piano + wake lock),
 chiede di escludere il risparmio batteria e manda notifiche vere (`window.PitCommAndroid.notifica`).
+Dalla versione 1.2: notifiche e posizione si chiedono subito al primo avvio (poi la batteria); con la posizione concessa il
+servizio e' anche di tipo "location", cosi' il GPS dell'auto non si ferma a schermo spento; se la pagina cade o si blocca
+l'app la ricrea e la ricarica da sola.
 Si compila su GitHub: **Actions → "Android APK"** (parte da sola a ogni modifica in `android/`, oppure "Run workflow").
 L'APK finisce in **Releases → apk-latest** (e tra gli artefatti dell'esecuzione). Firma fissa nel repo, quindi gli aggiornamenti si installano sopra la versione vecchia.
 
