@@ -458,7 +458,9 @@ function mpPannello(){
     h += '<div class="mp-righe">' + mpBtn('Applica a tutte le zone', 'mpApplicaSposta()', (dx || dy) ? 'primary' : 'mp-off') + mpBtn('Esci', 'mpEsciSenzaSalvare()') + '</div>';
   } else if(mp.modo === 'circuito'){
     h += '<div class="mp-aiuto">Il circuito e’ un file con zona box, rifornimento, corsia, traguardo e giro di riferimento. Lo prepari dal PC e lo carichi in qualunque stanza: il GPS non si accende da solo.</div>';
-    h += '<div class="mp-righe">' + mpBtn('Salva circuito (file)', 'mpCircuitoSalva()', 'primary') + mpBtn('Copia come testo', 'mpCircuitoCopia()') + mpBtn('Carica da file', "$('mpFile').click()") + '</div>';
+    // nell'APK si sceglie solo il circuito (il salvataggio di file li' non parte): il file si prepara da PC
+    if(window.PitCommAndroid) h += '<div class="mp-righe">' + mpBtn('Scegli il circuito (file)', "$('mpFile').click()", 'primary') + '</div>';
+    else h += '<div class="mp-righe">' + mpBtn('Salva circuito (file)', 'mpCircuitoSalva()', 'primary') + mpBtn('Copia come testo', 'mpCircuitoCopia()') + mpBtn('Carica da file', "$('mpFile').click()") + '</div>';
     h += '<textarea id="mpTesto" class="mp-testo" rows="3" placeholder="oppure incolla qui il testo del circuito" spellcheck="false"></textarea>';
     h += '<div class="mp-righe">' + mpBtn('Carica da testo', 'mpCircuitoCaricaTesto()') + mpBtn('Esci', 'mpEsciSenzaSalvare()') + '</div>';
   } else if(mp.modo === 'corsia'){
