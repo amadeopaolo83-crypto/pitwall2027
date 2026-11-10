@@ -1,5 +1,5 @@
 const { chromium } = require('playwright'); const http = require('http'), fs = require('fs'), path = require('path');
-const root = '/home/claude/pitwall2027/public';
+const C = require('./comune'); const root = C.ROOT;
 const srv = http.createServer((q, s) => { let p = decodeURIComponent(q.url.split('?')[0]); if (p === '/') p = '/index.html';
   const f = path.join(root, p); fs.readFile(f, (e, d) => { if (e) { s.writeHead(404); return s.end(); }
     s.writeHead(200, { 'Content-Type': { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }[path.extname(f)] || 'application/octet-stream' }); s.end(d); }); });
@@ -23,5 +23,9 @@ srv.listen(8778, async () => {
     return { offset: Math.round(clockOffset), errore: Math.round(clockOffset - SCARTO), rttMigliore: orologioMigliore.rtt, errorePrimoCampione: Math.round(grezzo - SCARTO) };
   });
   console.log(JSON.stringify(R), errs);
-  await b.close(); srv.close();
+  const V = C.controlli('orologio');
+  V.ok('scarto stimato entro 30 ms', Math.abs(R.errore) <= 30, R);
+  V.ok('tiene la misura piu veloce', R.rttMigliore <= 100, R.rttMigliore);
+  V.ok('nessun errore nella pagina', C.erroriVeri(errs).length === 0, errs);
+  await b.close(); srv.close(); V.fine();
 });

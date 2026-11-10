@@ -1,0 +1,50 @@
+name: Prove
+
+# Tutte le prove di tools/prove a ogni modifica: server (finti socket), pagina (Playwright),
+# sorgenti Android e vista auto identica a pitwallnew (letto e basta, mai modificato).
+# Non pubblica e non riavvia niente: Render non si tocca.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  prove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PROVE_OUT: ${{ github.workspace }}/prove-out
+      PITWALLNEW_DIR: ${{ github.workspace }}/../pitwallnew
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Dipendenze del server
+        run: npm install --no-audit --no-fund
+
+      - name: Playwright con Chromium
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.63.0
+          npx playwright install --with-deps chromium
+
+      - name: Copia di pitwallnew (solo lettura, per audit.js)
+        run: git clone --depth 1 https://github.com/amadeopaolo83-crypto/pitwallnew "$PITWALLNEW_DIR"
+
+      - name: Prove
+        run: node tools/prove/tutte.js
+
+      - name: Schermate delle prove
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schermate-prove
+          path: prove-out
+          if-no-files-found: ignore

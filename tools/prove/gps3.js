@@ -1,5 +1,5 @@
 const { chromium } = require('playwright'); const http = require('http'), fs = require('fs'), path = require('path');
-const root = '/home/claude/pitwall2027/public';
+const C = require('./comune'); const root = C.ROOT;
 const srv = http.createServer((q, s) => { let p = decodeURIComponent(q.url.split('?')[0]); if (p === '/') p = '/index.html';
   const f = path.join(root, p); fs.readFile(f, (e, d) => { if (e) { s.writeHead(404); return s.end(); }
     s.writeHead(200, { 'Content-Type': { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }[path.extname(f)] || 'application/octet-stream' }); s.end(d); }); });
@@ -58,5 +58,20 @@ srv.listen(8773, async () => {
     return out;
   });
   console.log(JSON.stringify(R)); console.log('errs', errs);
-  await b.close(); srv.close();
+  const V = C.controlli('gps3'), J = JSON.stringify;
+  V.ok('corsia registrata (piu di 10 punti, 55-75 m)', R.regPunti > 10 && R.regLungh >= 55 && R.regLungh <= 75, [R.regPunti, R.regLungh]);
+  V.ok('distanza dalla corsia', J(R.distCorsia) === '[0,24]', R.distCorsia);
+  V.ok('dopo 40 s fermo: nessuna domanda', R.dopo40s[0] === false, R.dopo40s);
+  V.ok('dopo 65 s fermo: domanda visibile', R.dopo65s[0] === true && R.dopo65s[1] === true && /cambio pilota/.test(R.dopo65s[3]), R.dopo65s);
+  V.ok('pagina in primo piano: nessuna notifica nativa', R.notifApp === 0);
+  V.ok('pagina nascosta: notifica nativa', R.notifNascosta === 1);
+  V.ok('si muove: la domanda sparisce', J(R.mossa) === '[false,true]', R.mossa);
+  V.ok('fuori corsia: niente domanda', R.fuoriCorsia[0] === false && R.fuoriCorsia[1] === false, R.fuoriCorsia);
+  V.ok('punti imprecisi: niente domanda', R.puntiImprecisi === false);
+  V.ok('domanda e risposta: un cambio', R.richiesta === true && R.cambi === 1, [R.richiesta, R.cambi]);
+  V.ok('una sola domanda per sosta', R.unaVolta === false);
+  V.ok('foto finale', R.fotoFlatsix === 'finish-photo.jpg' && R.fotoAltra === null && R.fotoCaricata === '/foto-finale/ALTRA?v=12345', [R.fotoFlatsix, R.fotoAltra, R.fotoCaricata]);
+  V.ok('notifica del messaggio con il testo', R.msgNotif && R.msgNotif[1] === 'Pit tra 2 giri', R.msgNotif);
+  V.ok('nessun errore nella pagina', C.erroriVeri(errs).length === 0, errs);
+  await b.close(); srv.close(); V.fine();
 });

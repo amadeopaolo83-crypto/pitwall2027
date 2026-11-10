@@ -23,7 +23,8 @@ box e auto (PWA + server Node + involucro Android). Questo repository (`Pitwall2
 - `public/vendor/leaflet`: Leaflet incluso (npm e CDN non raggiungibili da alcuni ambienti).
 - `android/`: involucro WebView, servizio in primo piano, notifiche con sirena. Build con GitHub Actions
   (`.github/workflows/android.yml`) → release `apk-latest`.
-- `tools/prove/`: script di collaudo (vedi `LEGGIMI.md`).
+- `tools/prove/`: script di collaudo (vedi `LEGGIMI.md`); `node tools/prove/tutte.js` li esegue tutti e girano su GitHub
+  a ogni modifica (`.github/workflows/prove.yml`, serve `pitwallnew` in sola lettura per `audit.js`).
 
 ## Cose da sapere
 - Ogni telefono calcola il suo timer da `remaining/updatedAt`: il server non fa tick. Il tempo e' quello del server (`serverNow`).

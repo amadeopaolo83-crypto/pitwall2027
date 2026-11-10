@@ -1,12 +1,12 @@
 const { chromium } = require('playwright'); const http = require('http'), fs = require('fs'), path = require('path');
-const root = '/home/claude/pitwall2027/public';
+const C = require('./comune'); const root = C.ROOT;
 const srv = http.createServer((q, s) => { let p = decodeURIComponent(q.url.split('?')[0]); if (p === '/') p = '/index.html';
   const f = path.join(root, p); fs.readFile(f, (e, d) => { if (e) { s.writeHead(404); return s.end(); }
     s.writeHead(200, { 'Content-Type': { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg' }[path.extname(f)] || 'application/octet-stream' }); s.end(d); }); });
 srv.listen(8777, async () => {
   const b = await chromium.launch(); const pg = await b.newPage({ viewport: { width: 390, height: 800 }, deviceScaleFactor: 2 });
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
-  const tile = fs.readFileSync('/tmp/demo/tile.png');
+  const tile = C.tessera();
   await pg.route(/arcgisonline|openstreetmap/, (r) => r.fulfill({ contentType: 'image/png', body: tile }));
   await pg.route('**/socket.io/socket.io.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.__em=[];window.io=()=>({on(){},off(){},emit(...a){window.__em.push(a)},connected:true,onAny(){}});' }));
   await pg.route('**/socket.io.min.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.__em=[];window.io=()=>({on(){},off(){},emit(...a){window.__em.push(a)},connected:true,onAny(){}});' }));
@@ -26,7 +26,7 @@ srv.listen(8777, async () => {
   await pg.mouse.click(cx, cy + 60); await pg.waitForTimeout(80);
   R.terzoIgnorato = await pg.evaluate(() => mp.ed.pts.length);
   R.lungh = await pg.evaluate(() => Math.round(gpsDistanza(mp.ed.pts[0], mp.ed.pts[1])));
-  await pg.screenshot({ path: '/tmp/demo/mappa-traguardo.png' });
+  await pg.screenshot({ path: C.OUT + '/mappa-traguardo.png' });
   await pg.evaluate(() => mpSalva());
   const t1 = await pg.evaluate(() => window.__em.filter((e) => e[0] === 'gpsConfigUpdate').pop()[1]);
   R.salvato = t1.traguardo ? t1.traguardo.length : null;
@@ -36,7 +36,7 @@ srv.listen(8777, async () => {
   await pg.evaluate(() => { mp.passo = 2; mpMuovi(1, 0); mpMuovi(1, 0); mpMuovi(0, 1); });
   R.off = await pg.evaluate(() => mp.off);
   const prima = await pg.evaluate(() => JSON.parse(JSON.stringify({ box: gpsCfg.box, tr: gpsCfg.traguardo, cor: gpsCfg.corsia, poly: gpsCfg.refuelPoly })));
-  await pg.screenshot({ path: '/tmp/demo/mappa-sposta.png' });
+  await pg.screenshot({ path: C.OUT + '/mappa-sposta.png' });
   await pg.evaluate(() => mpApplicaSposta());
   const sp = await pg.evaluate(() => window.__em.filter((e) => e[0] === 'gpsConfigUpdate').pop()[1]);
   const m = (a, b) => Math.round(Math.hypot((b.lat - a.lat) * 111320, (b.lng - a.lng) * 111320 * Math.cos(a.lat * Math.PI / 180)) * 10) / 10;
@@ -52,9 +52,19 @@ srv.listen(8777, async () => {
   R.caricaSbagliato = await pg.evaluate(() => mpCircuitoCarica('{"x":1}'));
   R.caricaRotto = await pg.evaluate(() => mpCircuitoCarica('non json'));
   await pg.evaluate(() => mappaApri('circuito')); await pg.evaluate(() => mpVaiA('circuito')); await pg.waitForTimeout(200);
-  await pg.screenshot({ path: '/tmp/demo/mappa-circuito.png' });
+  await pg.screenshot({ path: C.OUT + '/mappa-circuito.png' });
   await pg.evaluate(() => mpVaiA('auto')); await pg.waitForTimeout(200);
-  await pg.screenshot({ path: '/tmp/demo/mappa-auto2.png' });
+  await pg.screenshot({ path: C.OUT + '/mappa-auto2.png' });
   console.log(JSON.stringify(R)); console.log('errs', errs);
-  await b.close(); srv.close();
+  const V = C.controlli('mappa2'), CAMPI = 'box,corsia,fermoS,giroRif,lancioS,larg,rBox,rRefuel,refuel,refuelPoly,traguardo';
+  V.ok('traguardo: 2 estremi, il terzo ignorato, salvato', R.estremi === 2 && R.terzoIgnorato === 2 && R.salvato === 2, [R.estremi, R.terzoIgnorato, R.salvato]);
+  V.ok('traguardo di circa 30 m', R.lungh >= 25 && R.lungh <= 35, R.lungh);
+  V.ok('sposta: 4 m est e 2 m nord', R.off && R.off.dx === 4 && R.off.dy === 2, R.off);
+  V.ok('sposta muove box, traguardo, corsia e area di 4,5 m', [R.spostamentoBox, R.spostamentoTraguardo, R.spostamentoCorsia, R.spostamentoPoly].every((x) => Math.abs(x - 4.5) <= 0.1), [R.spostamentoBox, R.spostamentoTraguardo, R.spostamentoCorsia, R.spostamentoPoly]);
+  V.ok('sposta non tocca il giro di riferimento', R.nonToccaGiro === true);
+  V.ok('file circuito completo e senza "on"', R.file.tipo === 'pitcomm-circuito' && R.file.campi === CAMPI && R.file.giroPunti === 30 && R.file.senzaOn, R.file);
+  V.ok('circuito ricaricato e inviato', R.caricaValido === true && R.inviati === CAMPI, [R.caricaValido, R.inviati]);
+  V.ok('file sbagliato o rotto rifiutato', R.caricaSbagliato === false && R.caricaRotto === false, [R.caricaSbagliato, R.caricaRotto]);
+  V.ok('nessun errore nella pagina', C.erroriVeri(errs).length === 0, errs);
+  await b.close(); srv.close(); V.fine();
 });

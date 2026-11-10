@@ -1,5 +1,5 @@
 const { chromium } = require('playwright'); const http = require('http'), fs = require('fs'), path = require('path');
-const root = '/home/claude/pitwall2027/public';
+const C = require('./comune'); const root = C.ROOT;
 const srv = http.createServer((q, s) => { let p = decodeURIComponent(q.url.split('?')[0]); if (p === '/') p = '/index.html';
   const f = path.join(root, p); fs.readFile(f, (e, d) => { if (e) { s.writeHead(404); return s.end(); }
     s.writeHead(200, { 'Content-Type': { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }[path.extname(f)] || 'application/octet-stream' }); s.end(d); }); });
@@ -65,6 +65,16 @@ srv.listen(8774, async () => {
     return out;
   });
   console.log(JSON.stringify(R, null, 1)); console.log('errs', errs);
-  await pg.screenshot({ path: '/tmp/demo/lancio-app.png' });
-  await b.close(); srv.close();
+  await pg.screenshot({ path: C.OUT + '/lancio-app.png' });
+  const V = C.controlli('lancio1'), J = JSON.stringify;
+  V.ok('senza riferimento la vista auto non cambia', J(R.senzaRif) === '[false,true]', R.senzaRif);
+  V.ok('giro di riferimento registrato e inviato', R.giriEmessi >= 1 && R.rif && R.rif.n >= 20, [R.giriEmessi, R.rif]);
+  V.ok('durata del riferimento entro 0,5 s dal vero', R.rif && Math.abs(R.rif.t - R.giroVero) < 0.5, [R.rif && R.rif.t, R.giroVero]);
+  const dN = R.serieNormale.map((x) => Number(x.split(' | ')[2]));
+  V.ok('ritmo costante: arrivo stimato entro 1 s dallo zero', dN.length === 6 && dN.every((d) => Number.isFinite(d) && Math.abs(d) <= 1), dN);
+  V.ok('fascia visibile in auto', J(R.vista) === '[true,false]', R.vista);
+  const ult = R.serieLento[R.serieLento.length - 1].split(' | ');
+  V.ok('pilota piu lento del 10%: ritmo > 1,05 e "Accelera"', Number(ult[1]) > 1.05 && Number(ult[2]) > 0 && ult[3] === 'Accelera', ult);
+  V.ok('nessun errore nella pagina', C.erroriVeri(errs).length === 0, errs);
+  await b.close(); srv.close(); V.fine();
 });

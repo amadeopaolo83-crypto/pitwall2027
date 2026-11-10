@@ -1,7 +1,10 @@
 const EventEmitter = require('events');
-const { registra } = require('/home/claude/pitwall2027/src/sockets.js');
-const { serviRichiesta } = require('/home/claude/pitwall2027/src/static.js');
+const { registra } = require('../../src/sockets.js');
+const { serviRichiesta } = require('../../src/static.js');
 const emitted = [];
+const V = require('./comune').controlli('srvtest2');
+const log = console.log; const visti = [];
+console.log = (...a) => { visti.push(a); log(...a); };
 const mk = () => { const s = new EventEmitter(); s.data = {}; s.join = () => {}; s.onAny = (f) => { const o = s.emit.bind(s); s.emit = (ev, ...a) => { f(ev, ...a); return o(ev, ...a); }; }; return s; };
 const io = new EventEmitter(); io.to = () => ({ emit: (ev, d) => emitted.push([ev, d]) }); io.in = io.to;
 registra(io);
@@ -70,5 +73,20 @@ const get = (url) => new Promise((r) => { const res = { writeHead(c, h) { this.c
   box.emit('gpsConfigUpdate', { giroRif: null, traguardo: null }); console.log('tolti:', L().giroRif, L().traguardo);
   box.emit('gpsConfigUpdate', { traguardo: tr }); box.emit('gpsConfigUpdate', { on: false }); auto.emit('gpsGiroRif', giro);
   console.log('gps spento: giro ignorato:', L().giroRif);
-  process.exit(0);
+  // Controlli: i valori attesi di ogni riga stampata sopra.
+  console.log = log;
+  const val = (et) => { const r = visti.find((a) => String(a[0]).startsWith(et)); return r ? r.slice(1) : undefined; };
+  const eq = (et, ...att) => V.ok(et, JSON.stringify(val(et)) === JSON.stringify(att), val(et));
+  eq('stato senza foto:', null, '| corsia:', 'null', 8);
+  eq('404 senza foto:', 404); eq('auto non puo caricare:', true); eq('scartate le non valide:', true); eq('caricata:', true);
+  eq('servita:', 200, 304, 'image/jpeg'); eq('altra stanza 404:', 404); eq('tolta:', 404, null);
+  eq('corsia salvata:', 3, 6); eq('corsia non valida ignorata:', 3); eq('corsia tolta:', null);
+  eq('poligono salvato:', 4); eq('poligono <3 punti ignorato:', 4); eq('poligono non valido ignorato:', 4); eq('auto non modifica:', true); eq('poligono tolto:', null);
+  eq('gpsPos senza gps.on ignorato:', true); eq('box non invia pos:', true);
+  V.ok('gpsPos con on', /"lat":45.1,"lng":9.1,"acc":5,"v":12.5/.test(String(val('gpsPos con on:'))), val('gpsPos con on:'));
+  const fr = JSON.parse(val('fresh nello stato:')[0]); V.ok('fresh: gps e foto spenti, timer presente', fr.gps === false && fr.foto === false && fr.timer === true && fr.fuel === true, fr);
+  eq('traguardo salvato:', '2'); eq('traguardo troppo corto ignorato:', 9.0005); eq('traguardo con 1 punto ignorato:', 2);
+  eq('giro dall auto salvato:', 64); eq('secondo giro entro 20 s ignorato:', true); eq('giro con pochi punti ignorato:', 64); eq('giro con tempi non crescenti ignorato:', 1);
+  eq('lancioS fuori limite ignorato:', 240); eq('lancioS 180:', 180); eq('tolti:', null, null); eq('gps spento: giro ignorato:', null);
+  V.fine();
 })();

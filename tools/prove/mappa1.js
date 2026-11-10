@@ -1,12 +1,12 @@
 const { chromium } = require('playwright'); const http = require('http'), fs = require('fs'), path = require('path');
-const root = '/home/claude/pitwall2027/public';
+const C = require('./comune'); const root = C.ROOT;
 const srv = http.createServer((q, s) => { let p = decodeURIComponent(q.url.split('?')[0]); if (p === '/') p = '/index.html';
   const f = path.join(root, p); fs.readFile(f, (e, d) => { if (e) { s.writeHead(404); return s.end(); }
     s.writeHead(200, { 'Content-Type': { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg' }[path.extname(f)] || 'application/octet-stream' }); s.end(d); }); });
 srv.listen(8776, async () => {
   const b = await chromium.launch(); const pg = await b.newPage({ viewport: { width: 390, height: 800 }, deviceScaleFactor: 2 });
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message)); pg.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  const tile = fs.readFileSync('/tmp/demo/tile.png');
+  const tile = C.tessera();
   await pg.route(/arcgisonline|openstreetmap/, (r) => r.fulfill({ contentType: 'image/png', body: tile }));
   await pg.route('**/socket.io/socket.io.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.__em=[];window.io=()=>({on(){},off(){},emit(...a){window.__em.push(a)},connected:true,onAny(){}});' }));
   await pg.route('**/socket.io.min.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.__em=[];window.io=()=>({on(){},off(){},emit(...a){window.__em.push(a)},connected:true,onAny(){}});' }));
@@ -25,11 +25,14 @@ srv.listen(8776, async () => {
   const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
   for (const [dx, dy] of [[-60, -40], [60, -40], [60, 40], [-60, 40]]) { await pg.mouse.click(cx + dx, cy + dy); await pg.waitForTimeout(80); }
   const n = await pg.evaluate(() => mp.ed.pts.length);
-  await pg.screenshot({ path: '/tmp/demo/mappa-edit.png' });
+  await pg.screenshot({ path: C.OUT + '/mappa-edit.png' });
   await pg.evaluate(() => mpAnnullaUltimo()); const n2 = await pg.evaluate(() => mp.ed.pts.length);
   await pg.evaluate(() => mpAggiungiMio()); const n3 = await pg.evaluate(() => mp.ed.pts.length);
   await pg.evaluate(() => mpSalva());
   const inviato = await pg.evaluate(() => window.__em.filter((e) => e[0] === 'gpsConfigUpdate').pop()[1]);
+  const V = C.controlli('mappa1');
+  V.ok('4 punti toccati, annulla, mio punto', n === 4 && n2 === 3 && n3 === 4, [n, n2, n3]);
+  V.ok('area inviata con 4 punti', (inviato.refuelPoly || []).length === 4, inviato);
   console.log('punti toccati', n, '| dopo annulla', n2, '| dopo mio punto', n3, '| inviati', (inviato.refuelPoly || []).length, '| modo ora', await pg.evaluate(() => mp.modo));
   // il server risponde con la nuova config
   await pg.evaluate((c) => gpsApplicaConfig(c), { refuelPoly: inviato.refuelPoly });
@@ -40,14 +43,18 @@ srv.listen(8776, async () => {
     out.pipCentro = gpsInPoligono(c, poly); out.distBordoCentro = Math.round(gpsDistBordo(c, poly));
     return out; });
   console.log('zone', JSON.stringify(z));
+  V.ok('zone: centro rifornimento, lontano pista', z.centro === 'rifornimento' && z.lontano === 'pista' && z.pipCentro === true, z);
   // auto sulla mappa
   await pg.evaluate(() => { mpVaiA('auto'); const t = Date.now(); for (let i = 0; i < 5; i++) gpsRicevi({ lat: 45.0003 + i * 0.00002, lng: 9.0001, acc: 4, v: 12.5, t: t + i * 1000 }); });
   await pg.waitForTimeout(700);
   const au = await pg.evaluate(() => ({ marker: !!mp.auto, scia: mp.auto.scia.getLatLngs().length, info: document.getElementById('mpInfo').textContent, segui: mp.segui }));
   console.log('auto', JSON.stringify(au));
-  await pg.screenshot({ path: '/tmp/demo/mappa-auto.png' });
+  V.ok('auto sulla mappa con scia e velocita', au.marker && au.scia === 5 && /45 km\/h/.test(au.info), au);
+  await pg.screenshot({ path: C.OUT + '/mappa-auto.png' });
   await pg.evaluate(() => mpVaiA('corsia')); await pg.waitForTimeout(300);
-  await pg.screenshot({ path: '/tmp/demo/mappa-corsia.png' });
-  await pg.evaluate(() => mappaChiudi()); console.log('chiusa', await pg.evaluate(() => document.getElementById('mappaGps').hidden), 'errs', errs);
-  await b.close(); srv.close();
+  await pg.screenshot({ path: C.OUT + '/mappa-corsia.png' });
+  await pg.evaluate(() => mappaChiudi()); const chiusa = await pg.evaluate(() => document.getElementById('mappaGps').hidden); console.log('chiusa', chiusa, 'errs', errs);
+  V.ok('mappa chiusa', chiusa === true);
+  V.ok('nessun errore nella pagina', C.erroriVeri(errs).length === 0, errs);
+  await b.close(); srv.close(); V.fine();
 });

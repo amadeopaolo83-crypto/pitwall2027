@@ -1,9 +1,11 @@
-const { chromium } = require('playwright'); const http = require('http'), fs = require('fs'), path = require('path');
+const { chromium } = require('playwright'); const C = require('./comune'); const http = require('http'), fs = require('fs'), path = require('path');
 const mk = (root, port) => new Promise((res) => { const srv = http.createServer((q, s) => { let p = decodeURIComponent(q.url.split('?')[0]); if (p === '/') p = '/index.html';
   const f = path.join(root, p); fs.readFile(f, (e, d) => { if (e) { s.writeHead(404); return s.end(); }
     s.writeHead(200, { 'Content-Type': { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }[path.extname(f)] || 'application/octet-stream' }); s.end(d); }); }); srv.listen(port, () => res(srv)); });
 (async () => {
-  const s1 = await mk('/home/claude/pitwall2027/public', 8771), s2 = await mk('/home/claude/pitwallnew/public', 8772);
+  // Serve una copia di pitwallnew (solo lettura): PITWALLNEW_DIR, oppure ../pitwallnew accanto al repository.
+  if (!fs.existsSync(require('path').join(C.PITWALLNEW, 'public', 'index.html'))) { console.log('MALE manca pitwallnew in ' + C.PITWALLNEW + ' (imposta PITWALLNEW_DIR)'); process.exit(1); }
+  const s1 = await mk(C.ROOT, 8771), s2 = await mk(require('path').join(C.PITWALLNEW, 'public'), 8772);
   const b = await chromium.launch();
   const prep = async (pg, url, ruolo, w, h) => {
     await pg.route('**/socket.io/socket.io.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.io=()=>({on(){},off(){},emit(){},connected:true,onAny(){}});' }));
@@ -54,5 +56,7 @@ const mk = (root, port) => new Promise((res) => { const srv = http.createServer(
     }
   }
   console.log(JSON.stringify(res, null, 1));
-  await b.close(); s1.close(); s2.close();
+  const V = C.controlli('audit');
+  for (const [k, v] of Object.entries(res)) V.ok(k, k.startsWith('box-') ? v === 'ok' : v === 'IDENTICA', v);
+  await b.close(); s1.close(); s2.close(); V.fine();
 })();

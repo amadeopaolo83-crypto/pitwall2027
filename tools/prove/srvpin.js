@@ -1,6 +1,9 @@
 const EventEmitter = require('events');
-const { registra } = require('/home/claude/pitwall2027/src/sockets.js');
+const { registra } = require('../../src/sockets.js');
 const emitted = [];
+const V = require('./comune').controlli('srvpin');
+const log = console.log; const visti = [];
+console.log = (...a) => { visti.push(a); log(...a); };
 const mk = () => { const s = new EventEmitter(); s.data = {}; s.join = () => {}; s.onAny = () => {}; const mws = []; s.use = (f) => mws.push(f);
   const orig = s.emit.bind(s);
   s.emit = (ev, ...a) => { let ok = true; for (const m of mws) { let passed = false; m([ev, ...a], () => { passed = true; }); if (!passed) { ok = false; break; } } return ok ? orig(ev, ...a) : false; };
@@ -33,5 +36,13 @@ const timer = () => emitted.filter((e) => e[0] === 'timerUpdate').length;
   c.emit('timerStartSet', { seconds: 100 }); console.log('con PIN, client senza join ignorato:', true);
   // orologio
   const t = await new Promise((r) => a.emit('ora', r)); console.log('ora del server:', Math.abs(t - Date.now()) < 50);
-  process.exit(0);
+  console.log = log;
+  for (const a of visti) {
+    const et = String(a[0]);
+    if (et.startsWith('box senza PIN')) V.ok(et, /"error":"pin"/.test(a[1]), a[1]);
+    else if (/rifiutato:$/.test(et)) V.ok(et, a[1] === 'pin', a[1]);
+    else V.ok(et, a.slice(1).every((x) => x === true || x === '| auto entra:'), a.slice(1));
+  }
+  delete process.env.BOX_PIN;
+  V.fine();
 })();
