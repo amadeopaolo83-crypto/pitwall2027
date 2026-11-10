@@ -29,7 +29,8 @@ srv.listen(8773, async () => {
     out.regPunti = inviata.corsia.length; out.regLungh = Math.round(gpsLunghezza(inviata.corsia));
     gpsApplicaConfig({ on: true, box: { lat: 45, lng: 9 }, refuel: { lat: 45.0003, lng: 9 }, rBox: 10, rRefuel: 25, corsia: inviata.corsia, larg: 8, fermoS: 60 });
     const pos = (lat, lng, acc = 5) => gpsRicevi({ lat, lng, acc, t: Date.now() });
-    const passo = (lat, lng, sec, acc, jit = 0) => { for (let i = 0; i < sec; i++) { A(1); pos(lat + (Math.random() - .5) * jit, lng, acc); } };
+    let seme = 7; const rnd = () => { seme = (seme * 16807) % 2147483647; return seme / 2147483647; };   // rumore ripetibile
+    const passo = (lat, lng, sec, acc, jit = 0) => { for (let i = 0; i < sec; i++) { A(1); pos(lat + (rnd() - .5) * jit, lng, acc); } };
     out.distCorsia = [Math.round(gpsDistCorsia({ lat: 45.0003, lng: 9 })), Math.round(gpsDistCorsia({ lat: 45.0003, lng: 9.0003 }))];
     // 2) fermo in corsia, fuori da box e rifornimento, con piccolo rumore GPS (+-1,5 m)
     passo(45.00055, 9, 40, 5, 0.000027);   out.dopo40s = [gpsChiede, gpsStato];
@@ -38,8 +39,8 @@ srv.listen(8773, async () => {
     Object.defineProperty(document, 'hidden', { value: true, configurable: true });
     gpsChiede = false; gpsCambioFatto = false; gpsAncoraDa = Date.now() - 70000; gpsControllaFermo();
     out.notifNascosta = window.__notif.length; Object.defineProperty(document, 'hidden', { value: false, configurable: true });
-    // 3) si muove di 12 m: la domanda sparisce e si ricomincia
-    pos(45.00055 + 0.0001, 9);             out.mossa = [gpsChiede, $('gpsDomanda').hidden];
+    // 3) si muove di 20 m (oltre il raggio di 10 m piu' il rumore): la domanda sparisce e si ricomincia
+    pos(45.00055 + 0.00018, 9);             out.mossa = [gpsChiede, $('gpsDomanda').hidden];
     // 4) fermo ma fuori dalla corsia (23 m di lato): niente domanda
     passo(45.0003, 9.0003, 80, 5);         out.fuoriCorsia = [gpsChiede, gpsInCorsia];
     // 5) fermo in corsia ma senza segnale buono (80 m di errore): niente
