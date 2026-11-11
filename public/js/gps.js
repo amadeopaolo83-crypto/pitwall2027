@@ -379,16 +379,20 @@ function gpsPitUscitaS(){
   return GPS_PIT_USCITA_S + Math.min(60, max / 3);
 }
 
-function gpsPitAggiorna(p){
-  if(!gpsCfg.on || !p) return;
+// st: lo stato dell'episodio (di norma quello del box; il lancio sull'auto ne usa uno suo, senza toccare il registro).
+// Ritorna true se in questo punto si e' chiuso un passaggio in corsia riconosciuto.
+function gpsPitAggiorna(p, st){
+  st = st || gpsPit;
+  if(!gpsCfg.on || !p) return false;
+  let chiuso = false;
   const t = Number.isFinite(p.t) ? p.t : Date.now();
   const v = Number.isFinite(p.v) ? p.v : (gpsVel != null ? gpsVel : null);
   const lim = (gpsCfg.limiteKmh || 60) / 3.6;
   const dentro = gpsPitInCorsia(p);
-  let e = gpsPit.ep;
+  let e = st.ep;
   if(dentro){
     const cp = gpsCfg.corsia && gpsCfg.corsia.length > 1 ? gpsCorsiaPos(p) : null;
-    if(!e) e = gpsPit.ep = { s0: cp ? cp.s : null, smax: 0, L: cp ? cp.L : 0, ing: t, ult: t, lento: 0, conf: false, vmax: 0, fermoS: 0, maxFermoS: 0, dove: null, inFermo: null, fuori: null, zone: {} };
+    if(!e) e = st.ep = { s0: cp ? cp.s : null, smax: 0, L: cp ? cp.L : 0, ing: t, ult: t, lento: 0, conf: false, vmax: 0, fermoS: 0, maxFermoS: 0, dove: null, inFermo: null, fuori: null, zone: {} };
     const dt = Math.max(0, Math.min(5, (t - e.ult) / 1000));
     e.ult = t; e.fuori = null;
     if(cp) e.smax = Math.max(e.smax, cp.s);
@@ -403,16 +407,27 @@ function gpsPitAggiorna(p){
     }
   } else if(e){
     if(e.fuori == null) e.fuori = t;
-    if((t - e.fuori) / 1000 >= gpsPitUscitaS()) gpsPitChiudi(e);
+    if((t - e.fuori) / 1000 >= gpsPitUscitaS()) chiuso = gpsPitChiudi(e, st);
   }
+  return chiuso;
 }
 
-function gpsPitChiudi(e){
-  gpsPit.ep = null;
-  if(!e.conf) return;                         // era solo un'auto veloce accanto alla corsia
-  if(e.lento < 0.7 * (e.ult - e.ing) / 1000) return; // per lo piu' veloce: era la pista accanto alla corsia
-  // con la corsia registrata: deve entrare dall'inizio e percorrerne la maggior parte (non basta rallentare vicino)
-  if(e.s0 != null && !(e.s0 <= Math.max(40, e.L * 0.15) && e.smax >= e.L * 0.6)) return;
+// Un episodio e' un passaggio vero in corsia box solo se: ha rallentato (non e' la pista accanto alla corsia), per lo piu' piano,
+// e, con la corsia registrata, e' entrato dall'inizio e ne ha percorso la maggior parte.
+function gpsPitQualifica(e){
+  if(!e || !e.conf) return false;
+  if(e.lento < 0.7 * (e.ult - e.ing) / 1000) return false;
+  if(e.s0 != null && !(e.s0 <= Math.max(40, e.L * 0.15) && e.smax >= e.L * 0.6)) return false;
+  return true;
+}
+// Lo stesso, mentre e' ancora in corso (per sapere subito che l'auto sta passando in corsia).
+function gpsPitInCorso(st){ return !!(st && st.ep && gpsPitQualifica(st.ep)); }
+
+function gpsPitChiudi(e, st){
+  st = st || gpsPit;
+  st.ep = null;
+  if(!gpsPitQualifica(e)) return false;
+  if(st !== gpsPit) return true;               // stato di un altro (il lancio sull'auto): niente registro
   const durata = Math.max(0, (e.ult - e.ing) / 1000);
   let tipo = 'passaggio';
   if(e.maxFermoS >= GPS_PIT_MIN_SOSTA_S){
@@ -424,6 +439,7 @@ function gpsPitChiudi(e){
   gpsPitLog.push(r); if(gpsPitLog.length > 40) gpsPitLog.shift();
   save('pc_gps_pit', gpsPitLog);
   gpsRender();
+  return true;
 }
 
 // ---------- cambio pilota: fermi dentro la corsia box oltre la soglia ----------

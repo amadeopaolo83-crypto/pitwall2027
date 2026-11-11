@@ -19,13 +19,13 @@ srv.listen(8783, async () => {
     for (let s = 1; s <= 330; s++) { g.passo(1, 1); const q = rum(g.stato(), s); if (!q) continue; lancioPunto({ lat: q.lat, lng: q.lng, acc: q.acc, v: q.v, t: T0 + s * 1000 }); if (laLocale && !A.rif.length) A.rif.push(s); }
     A.t = laLocale && laLocale.t;
     // B: due giri, il primo con sosta in corsia: il giro con la corsia non e' un riferimento
-    laLocale = null; laGiro = null; laPrec = null; laCroc = null; laVerso = 0;
+    laLocale = null; laGiro = null; laPrec = null; laCroc = null; laVerso = 0; laPitSt = { ep: null };
     const corsa = Pista.pianifica(pista, [{ giri: 1, pit: { dove: 'corsia', sostaS: 30 } }, { giri: 3 }], opz), rum2 = Pista.rumore(corsa, { seme: 2 });
     const B = { dopo: [] }; let visto = null;
     for (let t = 1; t <= corsa.durata; t++) { const q = rum2(t); if (!q) continue; lancioPunto({ lat: q.lat, lng: q.lng, acc: q.acc, v: q.v, t: T0 + 5e6 + t * 1000 }); if (laLocale !== visto) { visto = laLocale; B.dopo.push([t, laLocale && laLocale.t]); } }
     B.passaggi = corsa.passaggi.map((x) => Math.round(x));
     // C: la corsia attaccata alla pista (stessa linea), ma si corre a velocita' di pista: il giro resta pulito
-    laLocale = null; laGiro = null; laPrec = null; laCroc = null; laVerso = 0;
+    laLocale = null; laGiro = null; laPrec = null; laCroc = null; laVerso = 0; laPitSt = { ep: null };
     const gv = Pista.guida(pista, opz, { dx: 0, dy: 0 }); const rett = [];
     for (let k = 1; k <= 100; k++) { gv.passo(1, 1); const w = gv.stato(); if (w.v > 28) rett.push({ lat: w.lat, lng: w.lng }); }
     B.rettilineoS = rett.length;           // secondi sopra i 100 km/h in un giro: li' la corsia e' "parallela"

@@ -24,7 +24,6 @@ const LA_FONDO_SCALA_S = 10;     // la fascia piena vale +-10 s
 const LA_GIRO_MIN_S = 20, LA_GIRO_MAX_S = 1200;
 const LA_ACC_GIRO_M = 15;        // nel giro di riferimento entrano solo punti piu' precisi di cosi'
 const LA_BUCO_MAX_S = 6;         // tra due punti buoni: oltre, il giro non vale come riferimento
-const LA_CORSIA_MAX_S = 8;       // vicino alla corsia E piano (<= 1,3 x limite) oltre questo tempo: giro non pulito (ingresso/uscita e passaggi veloci no)
 const LA_FERMO_MAX_S = 6;        // fermo (v < 2 m/s) piu' di cosi': giro non pulito
 const LA_FINESTRA_RITMO_S = 30;  // sugli ultimi secondi si misura il ritmo
 const LA_FUORI_M = 60;           // piu' lontano di cosi' dal giro di riferimento: fuori traiettoria
@@ -42,6 +41,7 @@ let laR = 1;              // ritmo: 1 = come il riferimento, 1.1 = 10% piu' lent
 let laRis = null;         // ultimo risultato { e, d, aLinea, fuori, ... }
 let laUltimoPunto = 0;    // quando e' arrivato l'ultimo punto buono (Date.now)
 let laInviato = 0;
+let laPitSt = { ep: null };   // passaggio in corsia box visto dall'auto (stessa logica del registro pit del box, ma a parte)
 
 // ---------- geometria in metri attorno al punto di riferimento ----------
 
@@ -104,9 +104,12 @@ function laProietta(prep, p){
 // ---------- ingresso: un punto GPS dell'auto ----------
 
 function lancioPunto(p){
-  if(role !== 'auto' || !gpsCfg.on){ laGiro = null; laPrec = null; laCroc = null; laRis = null; return; }
+  if(role !== 'auto' || !gpsCfg.on){ laGiro = null; laPrec = null; laCroc = null; laRis = null; laPitSt = { ep: null }; return; }
   if(!p || (p.acc != null && p.acc > GPS_ACC_MAX)) return;
   laUltimoPunto = Date.now();
+  // Giro non valido come riferimento se in questo giro c'e' stato un passaggio in corsia box (entrata dall'inizio, percorsa, piano; o fermo ai box).
+  // Non basta passare vicino alla corsia ne' avere la pista accanto: conta il comportamento, non la velocita' assoluta.
+  try{ if(gpsPitAggiorna(p, laPitSt) || gpsPitInCorso(laPitSt)){ if(laGiro) laGiro.pulito = false; } }catch(e){}
   const linea = gpsCfg.traguardo;
   if(linea && laPrec && p.t > laPrec.t && gpsDistanza(laPrec, p) < 200){
     const inc = laIncrocio(laPrec, p, linea);
@@ -137,15 +140,6 @@ function laAggiungi(p){
   } else laGiro.fermoS = 0;
   // box, rifornimento o corsia: la sosta ai box non e' un giro di riferimento
   if(laInZonaBox(p)) laGiro.pulito = false;
-  // La corsia si innesta sulla pista e le corre parallela: anche chi e' in pista le passa vicino.
-  // Conta come "in corsia" solo chi e' vicino E va piano (al limite della corsia, non a velocita' di pista) per piu' di LA_CORSIA_MAX_S secondi.
-  if(gpsCfg.corsia && gpsDistCorsia(p) <= gpsCfg.larg){
-    const lento = !Number.isFinite(p.v) || p.v <= 1.3 * (gpsCfg.limiteKmh || 60) / 3.6;
-    if(lento){
-      laGiro.corsiaS = (laGiro.corsiaS || 0) + (s - laGiro.ultimoS);
-      if(laGiro.corsiaS > LA_CORSIA_MAX_S) laGiro.pulito = false;
-    }
-  }
   laGiro.pts.push([Math.round(p.lat * 1e6) / 1e6, Math.round(p.lng * 1e6) / 1e6, Math.round(s * 100) / 100]);
   laGiro.ultimoS = s;
 }
@@ -173,7 +167,7 @@ function laPassaggio(tc, px){
       }
     }
   }
-  laGiro = { t0: tc, inizio: { lat: Math.round(px.lat * 1e6) / 1e6, lng: Math.round(px.lng * 1e6) / 1e6 }, pts: [], pulito: true, fermoS: 0, ultimoS: 0 };
+  laGiro = { t0: tc, inizio: { lat: Math.round(px.lat * 1e6) / 1e6, lng: Math.round(px.lng * 1e6) / 1e6 }, pts: [], pulito: !gpsPitInCorso(laPitSt), fermoS: 0, ultimoS: 0 };
   laCroc = tc;
   laIdx = -1;
   laStorico = [];
