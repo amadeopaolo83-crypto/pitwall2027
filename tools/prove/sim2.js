@@ -4,6 +4,7 @@ const C = require('./comune'); const V = C.controlli('sim2'); const root = C.ROO
 const srv = http.createServer((q, s) => { let p = decodeURIComponent(q.url.split('?')[0]); if (p === '/') p = '/index.html';
   const f = path.join(root, p); fs.readFile(f, (e, d) => { if (e) { s.writeHead(404); return s.end(); }
     s.writeHead(200, { 'Content-Type': { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }[path.extname(f)] || 'application/octet-stream' }); s.end(d); }); });
+const FILE = process.env.CIRCUITO ? JSON.parse(fs.readFileSync(path.resolve(C.ROOT, '..', process.env.CIRCUITO), 'utf8')).gps : null;
 srv.listen(8774, async () => {
   const b = await chromium.launch(); const pg = await b.newPage({ viewport: { width: 390, height: 800 } });
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
@@ -14,11 +15,12 @@ srv.listen(8774, async () => {
   await pg.addInitScript(() => { let off = 0; const real = Date.now.bind(Date); Date.now = () => real() + off; window.__avanza = (s) => { off += s * 1000; }; });
   await pg.goto('http://localhost:8774/');
   await pg.addScriptTag({ path: path.join(root, 'js/pista.js') });
-  const R = await pg.evaluate(async () => {
+  const R = await pg.evaluate(async (FILE) => {
     role = 'box'; code = 'SIM'; socket = io(); boxPrimario = true;
     document.querySelectorAll('body > div').forEach((d) => { d.hidden = true; }); document.getElementById('boxView').hidden = false;
-    const gps = Pista.esempio({ lat: 45.0, lng: 9.0 });
+    const gps = FILE || Pista.esempio({ lat: 45.0, lng: 9.0 });
     gpsApplicaConfig(Object.assign({}, gps, { on: true, fermoS: 60 }), true);
+    const limiteKmh = gps.limiteKmh || 60;
     const pista = Pista.costruisci(gps);
     const piano = [{ giri: 1 }, { giri: 1, pit: { dove: 'rifornimento', sostaS: 30 } }, { giri: 1, pit: { dove: 'rifornimento', sostaS: 1 } },
                    { giri: 1, pit: { dove: 'box', sostaS: 90 } }, { giri: 1, pit: { dove: 'box', sostaS: 20 } }, { giri: 2 }];
@@ -36,8 +38,8 @@ srv.listen(8774, async () => {
     for (let rip = 0; rip < 2; rip++) for (let i = 0; i < c.length - 1; i++) { window.__avanza(1); tt += 1; gpsRicevi(Object.assign(ll(c[i]), { acc: 4, v: 47, t: T0 + tt * 1000 })); }
     for (let i = 0; i < 8; i++) { window.__avanza(1); tt += 1; gpsRicevi({ lat: c[0].lat + 0.002, lng: c[0].lng, acc: 4, v: 47, t: T0 + tt * 1000 }); }
     const veloce = gpsPitLog.length - prima;
-    return { veloce, log: gpsPitLog, verita: corsa.verita, durata: corsa.durata, inviati, riga: gpsRiga(), giri: 7 };
-  });
+    return { veloce, log: gpsPitLog, verita: corsa.verita, durata: corsa.durata, inviati, riga: gpsRiga(), giri: 7, limiteKmh };
+  }, FILE);
   const log = R.log, ver = R.verita;
   const ing = ver.filter((e) => e.tipo === 'entrataLimite'), soste = ver.filter((e) => e.tipo === 'sosta');
   V.ok('nessun errore nella pagina', errs.length === 0, errs);
@@ -49,7 +51,7 @@ srv.listen(8774, async () => {
     const s = soste[i];
     if (!s || !x) return;
     V.ok('pit ' + (i + 1) + ': sosta misurata ' + x.fermoS + ' s (vera ' + (s.durataS) + ' s)', s.durataS <= 1 ? x.fermoS < 5 : Math.abs(x.fermoS - s.durataS) <= 4, [x.fermoS, s.durataS]);
-    V.ok('pit ' + (i + 1) + ': velocita\' in corsia vicina al limite (' + x.vmaxKmh + ' km/h)', x.vmaxKmh > 40 && x.vmaxKmh < 75, x.vmaxKmh);
+    V.ok('pit ' + (i + 1) + ': velocita\' in corsia vicina al limite (' + x.vmaxKmh + ' km/h)', x.vmaxKmh > R.limiteKmh * 0.65 && x.vmaxKmh < R.limiteKmh * 1.25, x.vmaxKmh);
   });
   V.ok('un\'auto veloce che passa sulla corsia (170 km/h) non viene contata', R.veloce === 0, R.veloce);
   V.ok('riga GPS mostra l\'ultimo pit', /ultimo pit/.test(R.riga), R.riga);

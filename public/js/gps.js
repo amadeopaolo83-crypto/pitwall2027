@@ -318,9 +318,11 @@ function gpsPitAggiorna(p){
   const dentro = gpsPitInCorsia(p);
   let e = gpsPit.ep;
   if(dentro){
-    if(!e) e = gpsPit.ep = { ing: t, ult: t, lento: 0, conf: false, vmax: 0, fermoS: 0, maxFermoS: 0, dove: null, inFermo: null, fuori: null, zone: {} };
+    const cp = gpsCfg.corsia && gpsCfg.corsia.length > 1 ? gpsCorsiaPos(p) : null;
+    if(!e) e = gpsPit.ep = { s0: cp ? cp.s : null, smax: 0, L: cp ? cp.L : 0, ing: t, ult: t, lento: 0, conf: false, vmax: 0, fermoS: 0, maxFermoS: 0, dove: null, inFermo: null, fuori: null, zone: {} };
     const dt = Math.max(0, Math.min(5, (t - e.ult) / 1000));
     e.ult = t; e.fuori = null;
+    if(cp) e.smax = Math.max(e.smax, cp.s);
     if(v != null){
       if(v <= lim * 1.25) e.lento += dt;
       if(e.conf || e.lento >= GPS_PIT_CONFERMA_S){ e.conf = true; e.vmax = Math.max(e.vmax, v); }
@@ -339,6 +341,8 @@ function gpsPitAggiorna(p){
 function gpsPitChiudi(e){
   gpsPit.ep = null;
   if(!e.conf) return;                         // era solo un'auto veloce accanto alla corsia
+  // con la corsia registrata: deve entrare dall'inizio e percorrerne la maggior parte (non basta rallentare vicino)
+  if(e.s0 != null && !(e.s0 <= Math.max(40, e.L * 0.15) && e.smax >= e.L * 0.6)) return;
   const durata = Math.max(0, (e.ult - e.ing) / 1000);
   let tipo = 'passaggio';
   if(e.maxFermoS >= GPS_PIT_MIN_SOSTA_S){
@@ -368,6 +372,24 @@ function gpsDistCorsia(p){
     min = Math.min(min, Math.hypot(ax + t * dx, ay + t * dy));
   }
   return min;
+}
+
+// Distanza dalla corsia e posizione lungo di essa (metri dall'ingresso), con la lunghezza totale.
+function gpsCorsiaPos(p){
+  const c = gpsCfg.corsia;
+  if(!c || c.length < 2) return null;
+  const k = Math.PI / 180, mLat = 111320, mLng = 111320 * Math.cos(p.lat * k);
+  const X = (q) => (q.lng - p.lng) * mLng, Y = (q) => (q.lat - p.lat) * mLat;
+  let min = Infinity, sMin = 0, acc = 0;
+  for(let i = 0; i < c.length - 1; i++){
+    const ax = X(c[i]), ay = Y(c[i]), bx = X(c[i + 1]), by = Y(c[i + 1]);
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy, l = Math.sqrt(l2);
+    const t = l2 > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+    const d = Math.hypot(ax + t * dx, ay + t * dy);
+    if(d < min){ min = d; sMin = acc + t * l; }
+    acc += l;
+  }
+  return { d: min, s: sMin, L: acc };
 }
 
 // Fermo = il telefono dell'auto resta entro pochi metri dallo stesso punto. Si ricomincia a
