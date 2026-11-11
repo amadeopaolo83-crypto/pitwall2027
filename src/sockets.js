@@ -11,6 +11,7 @@ const aub = require("./aub");
 const aubtimer = require("./aubtimer");
 const ponte = require("./ponte");
 const passo = require("./passo");
+const strategia = require("./strategia");
 const crypto = require("crypto");
 
 // Gli eventi di comando (timer, gara, messaggi, impostazioni) li accetta solo chi e' entrato come "box";
@@ -408,7 +409,7 @@ function registra(io) {
     // ricollega li chiede), copia ripristinata dal box e azzeramento.
     socket.on("passoRequest", (ack) => {
       if (!joinedCode || typeof ack !== "function") return;
-      ack({ ok: true, riepilogo: passo.riepilogo(joinedCode), storico: passo.storico(joinedCode) });
+      ack({ ok: true, riepilogo: passo.riepilogo(joinedCode), storico: passo.storico(joinedCode), strategia: strategia.ultima(joinedCode) });
     });
     socket.on("passoRestore", (dati, ack) => {
       if (!joinedCode) return;

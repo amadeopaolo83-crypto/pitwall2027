@@ -278,6 +278,7 @@ function registerListeners(){
   socket.on('gpsConfigUpdate', (c) => { if(typeof gpsApplicaConfig === 'function') gpsApplicaConfig(c); });
   socket.on('gpsPos', (p) => { if(typeof gpsRicevi === 'function') gpsRicevi(p); });
   socket.on('passoUpdate', passoRicevi);
+  socket.on('strategiaUpdate', (r) => { if(typeof strategiaRicevi === 'function') strategiaRicevi(r); });
   socket.on('passoAzzerato', () => {
     passoLocale = { numero: passoLocale.numero, giri: [] };
     try{ localStorage.removeItem(PASSO_KEY); }catch(e){}

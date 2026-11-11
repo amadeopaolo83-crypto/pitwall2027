@@ -29,7 +29,7 @@ function generaRivale(i, cfg, fino) {
   const stint = () => 7 + Math.floor(r.uni() * 4);            // 7-10 giri tra due soste
   const perdita = 24 + r.uni() * 22;                          // secondi persi in una sosta normale
   const guasto = i === 4;                                     // uno si ferma a lungo una volta
-  let prossimaSosta = 4 + Math.floor(r.uni() * 6), giro = 0, t = i * 0.4;   // schieramento: pochi decimi tra uno e l'altro
+  let prossimaSosta = 6 + Math.floor(r.uni() * 5), giro = 0, t = i * 0.4;   // schieramento: pochi decimi tra uno e l'altro
   const passaggi = [], giri = [], soste = [];
   while (t < fino && giro < 400) {
     giro++;

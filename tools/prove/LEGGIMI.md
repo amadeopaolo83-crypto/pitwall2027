@@ -37,6 +37,8 @@ Le schermate vanno nella cartella temporanea (`pitcomm-prove`) o in `PROVE_OUT`.
 
 - `sim4.js`: come `sim2` sul circuito di Varano com'e' disegnato (box e rifornimento staccati dalla corsia).
 - `sim5.js`: finto ponte (`src/simponte.js`, solo con `SIM_PONTE=1`): classifica, safety car, pause, HTTP, collegamento con `ponte.js`.
+- `sim8.js`: strategia degli altri (`src/strategia.js`): soste, tipo, safety, bandiera rossa, prossima sosta, suggerimento del pit, confrontati con la verita' del finto ponte.
+- `sim9.js`: scheda "Strategia degli altri" nel box (dati veri del replay, banner, tabella, nessun HTML iniettato).
 
 ## Simulatore sul PC (senza telefono)
 1. Apri `/sim.html` del sito (o `tools/sim/circuito-esempio.json` come circuito) in una scheda; in un'altra il box con lo stesso codice squadra.

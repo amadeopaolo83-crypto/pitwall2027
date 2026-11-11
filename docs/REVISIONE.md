@@ -68,6 +68,9 @@ Per attivare il PIN: su Render → Environment → `BOX_PIN` (numeri, 4-8 cifre)
   timer) e faceva salvare l'archivio. Ora la registrazione sta dentro il filtro, dopo i controlli.
 - Da sapere: un box rimasto solo comanda subito (anche nei 20 s); i 20 s decidono chi e' primario quando l'altro rientra.
 
+### Strategia degli altri (dai soli tempi)
+`src/strategia.js` legge la classifica del ponte (stessa lettura dei distacchi) e riconosce: soste dei rivali (giro lento rispetto al proprio ritmo), tipo (rifornimento / cambio pilota? / lunga, solo dalla durata), safety e bandiera rossa, prossima sosta stimata, e il giro migliore per il nostro pit. Va ai telefoni con `strategiaUpdate`; scheda nel tab Passo del box. Prova: `sim8.js`, `sim9.js`. Limiti: provato su finto ponte, non su un live timing vero; con auto in gruppo una pausa e una safety non si distinguono (si trattano come giri non validi); soste sotto safety/rossa non si vedono; il calcolo completo si rifa a ogni giro nuovo o ogni 5 s (74 ms nel caso peggiore a 60 auto per 24 ore).
+
 ## 3. Architettura: tre strade
 - **A (consigliata, poco lavoro):** restare cosi', attivare `BOX_PIN`, configurare l'archivio (Upstash) anche su Pitwall2027, passare Render a un piano che non si addormenta. Costo: pochi euro al mese e mezz'ora.
 - **B (media):** salvare ogni 30-60 s uno "snapshot" della gara (timer, carburante, giri, passo, ultimo stato in pista/box) nell'archivio, cosi' un riavvio di Render e' invisibile. Costo: uno o due giorni di lavoro e prove. Vale la pena prima della prossima 24 ore.

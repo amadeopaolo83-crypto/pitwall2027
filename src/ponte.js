@@ -19,6 +19,7 @@
 
 const { getRoomState } = require("./rooms");
 const passo = require("./passo");
+const strategia = require("./strategia");
 const { BRIDGE_URL, BRIDGE_TOKEN } = require("./config");
 const simponte = require("./simponte");
 
@@ -260,6 +261,12 @@ function applica(code, link, r) {
   setStatus(code, { ...comune, status: "in ascolto", updatedAt: Date.now() });
   // Giri e passo: stessa lettura, calcoli in passo.js.
   try { passo.registra(code, piloti, link.numero); } catch (e) { /* il passo non deve fermare i distacchi */ }
+  // Strategia degli altri (soste, safety, momento del nostro pit) dai soli tempi; si manda solo se cambia qualcosa.
+  try {
+    const sr = strategia.registra(code, piloti, link.numero);
+    const chiave = JSON.stringify(sr, (k, v) => (k === "agg" ? undefined : v));
+    if (chiave !== link.ultimaStrategia) { link.ultimaStrategia = chiave; if (io) io.to(code).emit("strategiaUpdate", sr); }
+  } catch (e) { /* mai fermare i distacchi per questo */ }
   // Si rimanda ai telefoni solo quando qualcosa e' cambiato.
   const state = getRoomState(code);
   const prima = state.timing;
@@ -314,6 +321,7 @@ function stop(code) {
   link.stopped = true;
   link.controller.abort();
   links.delete(code);
+  strategia.azzera(code);
 }
 
 function validaEvento(testo) {

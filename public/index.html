@@ -16,7 +16,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
 <script>if(!window.io){document.write('<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"><\/script>');}</script>
-<link rel="stylesheet" href="css/style.css?v=45" />
+<link rel="stylesheet" href="css/style.css?v=46" />
 </head>
 <body>
 
@@ -216,6 +216,10 @@
     <div class="card">
       <h3>Ultimi giri</h3>
       <div id="passoGiriBox" class="mono passo-giri">—</div>
+    </div>
+    <div class="card">
+      <h3>Strategia degli altri</h3>
+      <div id="strategiaBox" class="mono" style="font-size:13px;line-height:1.6;color:var(--muted);">Serve il live timing (Distacchi → Nostro) e qualche giro: le soste si riconoscono dai giri lenti.</div>
     </div>
     <div class="card">
       <h3>Tutte le vetture</h3>
@@ -550,22 +554,23 @@
   <div class="mp-panel" id="mpPannello"></div>
   <input type="file" id="mpFile" accept=".json,application/json,text/plain" hidden onchange="mpCircuitoDaFile(this)">
 </div>
-<script src="js/core.js?v=45"></script>
-<script src="js/doppiobox.js?v=45"></script>
-<script src="js/push.js?v=45"></script>
-<script src="js/connection.js?v=45"></script>
-<script src="js/autoview.js?v=45"></script>
-<script src="js/fuel.js?v=45"></script>
-<script src="js/boxview.js?v=45"></script>
-<script src="js/timing.js?v=45"></script>
-<script src="js/passo.js?v=45"></script>
-<script src="js/cruscotto.js?v=45"></script>
-<script src="js/gps.js?v=45"></script>
-<script src="js/lancio.js?v=45"></script>
-<script src="js/mappa.js?v=45"></script>
-<script src="js/race.js?v=45"></script>
-<script src="js/timer.js?v=45"></script>
-<script src="js/install.js?v=45"></script>
-<script src="js/app.js?v=45"></script>
+<script src="js/core.js?v=46"></script>
+<script src="js/doppiobox.js?v=46"></script>
+<script src="js/push.js?v=46"></script>
+<script src="js/connection.js?v=46"></script>
+<script src="js/autoview.js?v=46"></script>
+<script src="js/fuel.js?v=46"></script>
+<script src="js/boxview.js?v=46"></script>
+<script src="js/timing.js?v=46"></script>
+<script src="js/passo.js?v=46"></script>
+<script src="js/strategia.js?v=46"></script>
+<script src="js/cruscotto.js?v=46"></script>
+<script src="js/gps.js?v=46"></script>
+<script src="js/lancio.js?v=46"></script>
+<script src="js/mappa.js?v=46"></script>
+<script src="js/race.js?v=46"></script>
+<script src="js/timer.js?v=46"></script>
+<script src="js/install.js?v=46"></script>
+<script src="js/app.js?v=46"></script>
 </body>
 </html>

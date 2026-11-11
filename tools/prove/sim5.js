@@ -67,7 +67,9 @@ srv.listen(8776, async () => {
   await new Promise((rs) => setTimeout(rs, 400));
   const stanza = require(C.SRC + '/rooms.js').getRoomState('ZZ9');
   V.ok('il box riceve posizione e distacchi dal finto ponte (stato "in ascolto")', stanza.ponte.status === 'in ascolto' && Number.isFinite(stanza.timing && stanza.timing.position) && inviati.some((e) => e[0] === 'timingUpdate'), [stanza.ponte.status, stanza.timing]);
+  V.ok('il ponte manda strategiaUpdate ai telefoni (forma completa; il contenuto sui rivali lo prova sim8)', inviati.some((e) => e[0] === 'strategiaUpdate' && e[1] && Array.isArray(e[1].rivali) && 'sugg' in e[1] && 'safety' in e[1]), inviati.filter((e) => e[0] === 'strategiaUpdate').length);
   ponte.stop('ZZ9');
+  V.ok('stop del ponte azzera la strategia di quella stanza', require(C.SRC + '/strategia.js').ultima('ZZ9') === null);
   process.env.SIM_PONTE = '0';
   const st2 = ponte.start('ZZ9', 'https://pitcomm.sim/PROVA', '77');
   V.ok('con SIM_PONTE spento l\'indirizzo del simulatore non funziona (nessun BRIDGE_URL)', !st2.ok, st2);

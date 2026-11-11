@@ -286,6 +286,7 @@ function passoAlCollegamento(){
   socket.emit('passoRequest', (res) => {
     if(!res || !res.ok) return;
     passoRis = res.riepilogo;
+    if(res.strategia && typeof strategiaRicevi === 'function') strategiaRicevi(res.strategia);
     if(role === 'box'){
       const st = res.storico || {};
       if(st.numero && passoLocale.numero && String(st.numero) !== String(passoLocale.numero)){
