@@ -54,6 +54,7 @@ const w = corsa.finestre[0];
 V.ok('safety car riconosciuta DURANTE la finestra vera, non solo dopo (' + safetyVista.length + ' letture)', safetyVista.some((t) => t >= w.da && t <= w.a), [w.da, w.a, safetyVista.slice(0, 3)]);
 V.ok('nessuna safety segnalata a vuoto (prima della pausa, e nel tratto tranquillo prima della safety)', !primaSafety);
 V.ok('bandiera rossa / sospensione riconosciuta nella pausa vera', sospVista.some((t) => t >= corsa.pauseT[0].da && t <= corsa.pauseT[0].da + corsa.pauseT[0].durata + 10), [corsa.pauseT[0], sospVista.slice(0, 3)]);
+V.ok('nessuna "gara ferma" a vuoto prima della pausa (gruppo ancora compatto: nessuno passa per quasi un giro, ma nessuno e\' in ritardo)', !sospVista.some((t) => t < corsa.pauseT[0].da), sospVista.filter((t) => t < corsa.pauseT[0].da).slice(0, 5));
 V.ok('sotto la safety i giri lenti non diventano soste (le soste durante la safety non si vedono: ' + persiSafety + ' nella prova)', true);
 // ---------- stima della prossima sosta ----------
 let ok2 = 0, tot2 = 0, errori = [];

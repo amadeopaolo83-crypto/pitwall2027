@@ -193,7 +193,12 @@ function riassumi(st, numeroNostro, ora) {
   const tipici = lista.map((a) => ritmo(a)).filter((x) => x != null);
   const giroTip = mediana(tipici);
   const ultimoVisto = Math.max.apply(null, lista.map((a) => (a.giri.length ? a.giri[a.giri.length - 1].at : 0)).concat([0]));
-  const sospensione = !!(giroTip && ultimoVisto && lista.length >= 6 && (ora - ultimoVisto) / 1000 > Math.max(30, 0.4 * giroTip) && lastN >= 3);
+  // Non basta il silenzio sul traguardo: con poche auto ancora in gruppo nessuno passa per quasi un giro intero, a ogni giro.
+  // Serve anche che almeno meta' delle auto sia in ritardo sul proprio ritmo (oltre il giro tipico + 10%, almeno 10 s).
+  const conRitmo = lista.filter((a) => a.n >= 3 && ritmo(a) && a.giri.length);
+  const fermeInRitardo = conRitmo.filter((a) => { const b = ritmo(a); return (ora - a.giri[a.giri.length - 1].at) / 1000 > b + Math.max(10, 0.1 * b); }).length;
+  const sospensione = !!(giroTip && ultimoVisto && lista.length >= 6 && (ora - ultimoVisto) / 1000 > Math.max(30, 0.4 * giroTip) && lastN >= 3
+    && conRitmo.length >= 3 && fermeInRitardo >= FRAZ_NEUTRALIZZAZIONE * conRitmo.length);
 
   // in diretta: meta' del gruppo non passa da piu' di 1,35 giri tipici = rallentamento in corso (i giri lenti si vedono solo a fine giro)
   const inRitardo = lista.filter((a) => { const b = ritmo(a), u = a.giri[a.giri.length - 1]; return b && u && a.n >= 3 && (ora - u.at) / 1000 > 1.35 * b; }).length;
