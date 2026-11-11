@@ -299,6 +299,7 @@ function crRenderCruscotto(){
   box.textContent = '';
   const eta = crEtaClassifica();
   crRiga(box, eta.testo, 'cr-riga ' + eta.cls);
+  { const noi = crNoiTxt(); if(noi) crRiga(box, 'NOI: ' + noi, 'cr-riga cr-titolo'); }
   // davanti e dietro: previsione sul passo (c'e' gia' nella scheda Passo)
   const rv = passoRivali();
   [['ahead', 'Davanti'], ['behind', 'Dietro']].forEach(([lato, et]) => {
@@ -327,6 +328,13 @@ function crRenderCruscotto(){
 }
 
 // Classifica di categoria in cima alla pagina Gara: noi, chi sta davanti, chi sta dietro.
+// "giro 12 · ultimo 1:41.2" della nostra vettura (dal passo: arriva dal live timing).
+function crNoiTxt(){
+  const mio = (typeof passoRis !== 'undefined' && passoRis) ? passoRis.mio : null;
+  if(!mio || mio.giri == null) return '';
+  return 'giro ' + mio.giri + ' \u00b7 ultimo ' + (typeof passoTempo === 'function' ? passoTempo(mio.ultimo) : '\u2014');
+}
+
 function crRenderCategoria(){
   const box = $('catPosto');
   if(!box) return;
@@ -353,7 +361,7 @@ function crRenderCategoria(){
   };
   const p = Number(t.catPosition);
   riga('cat-davanti', t.catNumberAhead ? (p - 1) + '\u00b0' : '', t.catNumberAhead ? descriviRivale(t.catNumberAhead, t.catNameAhead) : 'Sei in testa alla categoria', t.catNumberAhead ? (t.catGapAhead || '\u2014') : '');
-  riga('cat-noi', p + '\u00b0', 'NOI', '');
+  riga('cat-noi', p + '\u00b0', 'NOI', crNoiTxt());
   riga('cat-dietro', t.catNumberBehind ? (p + 1) + '\u00b0' : '', t.catNumberBehind ? descriviRivale(t.catNumberBehind, t.catNameBehind) : 'Nessuno dietro', t.catNumberBehind ? (t.catGapBehind || '\u2014') : '');
 }
 

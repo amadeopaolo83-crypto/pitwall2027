@@ -163,7 +163,10 @@ function passoRender(){
   passoRenderConfronti();
   // l'autonomia in giri sull'auto si aggiorna a ogni giro nuovo (cambia il passo)
   if(role === 'auto' && typeof renderFuelSystemUI === 'function') renderFuelSystemUI();
-  if(role === 'box') passoRenderBox();
+  if(role === 'box'){
+    passoRenderBox();
+    try{ if(typeof crRenderCategoria === 'function') crRenderCategoria(); if(typeof crRenderCruscotto === 'function') crRenderCruscotto(); }catch(e){}
+  }
 }
 
 function passoRenderBox(){

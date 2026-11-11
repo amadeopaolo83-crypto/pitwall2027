@@ -50,6 +50,17 @@ srv.listen(8799, async () => {
   const sporco = JSON.parse(JSON.stringify(normale)); sporco.rivali[0].numero = '<img src=x onerror="window.__xss=1">'; sporco.rivali[0].soste[0] = { giro: 3, tipo: '<b onclick="window.__xss=1">x</b>', extraS: 50 };
   await pg.evaluate((r) => strategiaRicevi(r), sporco); await pg.waitForTimeout(200);
   V.ok('XSS: HTML nei campi del live timing resta testo', await pg.evaluate(() => !window.__xss && !document.querySelector('#strategiaBox img, #strategiaBox b[onclick]')));
+  // scheda Gara: "NOI" mostra il giro e l'ultimo giro (dal passo)
+  const noi = await pg.evaluate(() => {
+    lastTiming = { position: 5, catName: 'A', catPosition: 3, catNumberAhead: '10', catNameAhead: 'X', catGapAhead: '+2.0', catNumberBehind: '18', catNameBehind: 'Y', catGapBehind: '-3.0' };
+    passoRis = { numero: '77', mio: { giri: 12, ultimo: 101.234, best: 100.9, m: {} }, auto: {} };
+    role = 'box'; crRenderCategoria(); crRenderCruscotto();
+    return { riga: document.querySelector('#catPosto .cat-noi').innerText, cruscotto: $('crCruscotto').innerText };
+  });
+  V.ok('scheda Gara, riga NOI: giro e ultimo giro', /giro 12/.test(noi.riga) && /ultimo 1:41\.2/.test(noi.riga), noi.riga);
+  V.ok('Cruscotto: prima riga NOI con giro e ultimo', /NOI: giro 12 · ultimo 1:41\.2/.test(noi.cruscotto), noi.cruscotto.slice(0, 120));
+  await pg.evaluate(() => { passoRis = null; crRenderCategoria(); crRenderCruscotto(); });
+  V.ok('senza dati del passo: niente scritte false', await pg.evaluate(() => !/giro/.test(document.querySelector('#catPosto .cat-noi').innerText) && !/NOI:/.test($('crCruscotto').innerText)));
   await pg.evaluate(() => strategiaRicevi(null)); await pg.evaluate(() => strategiaRicevi({}));
   V.ok('dati vuoti o rotti: nessun errore', errs.length === 0, errs);
   await b.close(); srv.close(); V.fine();
