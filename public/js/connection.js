@@ -289,6 +289,8 @@ function registerListeners(){
   socket.on('ponteStatus', renderPonteStatus);
   // per il cruscotto del box: quando e' arrivata l'ultima classifica e in che stato e' il collegamento
   socket.on('timingUpdate', () => { timingRicevutoAt = Date.now(); });
+  // lettura del ponte riuscita ma senza cambi: per il cruscotto la classifica e' comunque aggiornata
+  socket.on('timingVivo', () => { timingRicevutoAt = Date.now(); });
   socket.on('aubStatus', (a) => { aubStatoUltimo = a; });
   socket.on('ponteStatus', (f) => { ponteStatoUltimo = f; });
   socket.on('boxRuolo', (r) => { if(role === 'box') applyBoxRuolo(r); });

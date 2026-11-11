@@ -68,6 +68,16 @@ srv.listen(8776, async () => {
   const stanza = require(C.SRC + '/rooms.js').getRoomState('ZZ9');
   V.ok('il box riceve posizione e distacchi dal finto ponte (stato "in ascolto")', stanza.ponte.status === 'in ascolto' && Number.isFinite(stanza.timing && stanza.timing.position) && inviati.some((e) => e[0] === 'timingUpdate'), [stanza.ponte.status, stanza.timing]);
   V.ok('il ponte manda strategiaUpdate ai telefoni (forma completa; il contenuto sui rivali lo prova sim8)', inviati.some((e) => e[0] === 'strategiaUpdate' && e[1] && Array.isArray(e[1].rivali) && 'sugg' in e[1] && 'safety' in e[1]), inviati.filter((e) => e[0] === 'strategiaUpdate').length);
+  // stessa classifica letta di nuovo: niente timingUpdate, ma "timingVivo" (al massimo ogni 15 s) per il cruscotto del box
+  {
+    const ap = ponte._test.applica, link = { numero: '77' }, r = await (await fetch(base + '/sim/ponte/classifica?evento=PROVA')).json();
+    const conta = (ev) => inviati.filter((e) => e[0] === ev).length;
+    ap('ZZ8', link, r); const u0 = conta('timingUpdate'), v0 = conta('timingVivo');
+    ap('ZZ8', link, r);
+    V.ok('stessa classifica subito dopo: nessun invio', conta('timingUpdate') === u0 && conta('timingVivo') === v0, [conta('timingUpdate') - u0, conta('timingVivo') - v0]);
+    link.ultimoVivo -= 16000; ap('ZZ8', link, r);
+    V.ok('stessa classifica dopo 16 s: "timingVivo", non timingUpdate', conta('timingUpdate') === u0 && conta('timingVivo') === v0 + 1, [conta('timingUpdate') - u0, conta('timingVivo') - v0]);
+  }
   ponte.stop('ZZ9');
   V.ok('stop del ponte azzera la strategia di quella stanza', require(C.SRC + '/strategia.js').ultima('ZZ9') === null);
   process.env.SIM_PONTE = '0';

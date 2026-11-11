@@ -34,6 +34,7 @@ function nomeSimulato(evento) {
 
 const OGNI_MS = 2500;
 const ATTESA_NON_PUBBLICATO_MS = 20000;
+const VIVO_OGNI_MS = 15000;   // "lettura riuscita, niente di nuovo" al massimo ogni tanto
 const ATTESA_ERRORE_MS = 15000;
 const TIMEOUT_PRIMA_RISPOSTA_MS = 65000; // il ponte puo' dormire e metterci un minuto
 const TIMEOUT_MS = 8000;
@@ -275,7 +276,10 @@ function applica(code, link, r) {
     "catName", "catPosition", "catGapAhead", "catGapBehind", "catNameAhead", "catNameBehind", "catNumberAhead", "catNumberBehind",
   ].some((k) => prima[k] !== c.timing[k]);
   state.timing = c.timing;
-  if (cambiato) io.to(code).emit("timingUpdate", state.timing);
+  if (cambiato) { io.to(code).emit("timingUpdate", state.timing); link.ultimoVivo = Date.now(); }
+  // Lettura riuscita ma distacchi uguali (per esempio "1 giro" per minuti): lo si dice ogni tanto, cosi' il cruscotto del
+  // box non scrive "Classifica aggiornata 6 min fa" in rosso mentre il ponte legge regolarmente. Non cambia niente sull'auto.
+  else if (Date.now() - (link.ultimoVivo || 0) >= VIVO_OGNI_MS) { link.ultimoVivo = Date.now(); io.to(code).emit("timingVivo", { at: link.ultimoVivo }); }
 }
 
 function dormi(ms) {
@@ -380,5 +384,5 @@ module.exports = {
   attivo,
   setStatus,
   computeTiming,
-  _test: { computeTiming, distanzaTra, formatSeconds, formatGap, validaEvento },
+  _test: { computeTiming, distanzaTra, formatSeconds, formatGap, validaEvento, applica },
 };
