@@ -50,5 +50,5 @@ Provato solo con finti socket: il giro completo con il server vero va ancora fat
 ### Timing finto (SIM_PONTE=1)
 Su Render (Pitwall2027, solo la copia di prova) aggiungi la variabile `SIM_PONTE=1`. Nel simulatore lascia "timing finto" acceso: al via manda
 la corsa al server. Nel box: Distacchi → Nostro → indirizzo `https://pitcomm.sim/CODICE-SQUADRA` e numero 77 (o quello messo nel simulatore).
-Scenario: `sc dal-giro quanti-giri [velocita'%]` = giri lenti per tutti (tutti rallentano, anche la nostra auto), `pausa dopo-giri secondi` = gara ferma (tutti fermi sul traguardo).
+Scenario: `sc dal-giro quanti-giri [velocita'%]` = giri lenti per tutti (tutti rallentano, anche la nostra auto), `pausa dopo-giri secondi` = gara ferma; `ritmo dal-giro quanti-giri velocita'%` = cambia solo il nostro ritmo (tutti fermi sul traguardo).
 Gli altri sono piloti virtuali: stesso formato del ponte vero, solo tempi.

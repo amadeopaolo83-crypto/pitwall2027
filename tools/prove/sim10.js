@@ -2,6 +2,15 @@
 // si forma dopo due passaggi; un giro in cui si passa in corsia (sosta ai box) NON diventa riferimento.
 const { chromium } = require('playwright'); const http = require('http'), fs = require('fs'), path = require('path');
 const C = require('./comune'); const V = C.controlli('sim10');
+// ritmo solo nostro (scenario "ritmo dal-giro quanti-giri %"): i nostri giri si allungano, gli altri e le finestre di neutralizzazione no
+{
+  const Pista = require(C.ROOT + '/js/pista.js'), g0 = JSON.parse(fs.readFileSync(path.join(C.ROOT, '..', 'tools/sim/varano.json'), 'utf8')).gps;
+  const pi = Pista.costruisci(g0), op = Pista.calibra(pi, 100);
+  const c = Pista.pianifica(pi, [{ giri: 8 }], Object.assign({}, op, { ritmi: [{ daGiro: 3, giri: 3, fattore: 0.85 }] }));
+  const tg = c.passaggi.map((x, i, a) => i ? x - a[i - 1] : x);
+  V.ok('ritmo 85% dal giro 3 per 3 giri: i giri passano da 100 a circa 118 s e tornano a 100', tg.slice(3, 6).every((x) => x > 112 && x < 124) && Math.abs(tg[1] - 100) < 3 && Math.abs(tg[6] - 100) < 3, tg.map(Math.round));
+  V.ok('il ritmo solo nostro non crea finestre di neutralizzazione', c.finestre.length === 0);
+}
 const srv = http.createServer((q, s) => { let p = decodeURIComponent(q.url.split('?')[0]); if (p === '/') p = '/index.html';
   fs.readFile(path.join(C.ROOT, p), (e, d) => { if (e) { s.writeHead(404); return s.end(); } s.writeHead(200, { 'Content-Type': { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }[path.extname(p)] || 'application/octet-stream' }); s.end(d); }); });
 const stub = 'window.io=()=>({connected:true,on(){},off(){},emit(){}})';

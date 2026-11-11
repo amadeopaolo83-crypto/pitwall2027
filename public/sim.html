@@ -16,7 +16,7 @@ button.r{background:#7a2a2a;border-color:#b04444} .riga{display:flex;gap:8px;fle
  <div id="circ"><small>Nessun circuito.</small></div></fieldset>
 <fieldset><legend>2 · Squadra e server</legend>
  <div class="riga"><label>Codice squadra <input id="codice" size="10" value="SIM"></label><label>Server <input id="srv" size="28" placeholder="(questo sito)"></label><label>Posizione verso <select id="uscita"><option value="app">l’app auto (stesso browser)</option><option value="server">direttamente al server</option></select></label><a href="/?sim=1" target="_blank" style="color:#7fc1ff">Apri l’app auto</a></div></fieldset>
-<fieldset><legend>3 · Scenario: <code>attesa secondi</code> = auto ferma fino al via, <code>lancio secondi</code> = l'auto gira nel riscaldamento e tu regoli il ritmo con il cursore seguendo la barra dell'app auto; poi un turno per riga: <code>giri [rifornimento|box|corsia secondi]</code> (pit dopo quei giri). Eventi: <code>sc dal-giro quanti-giri [velocità%]</code> = giri lenti per tutti, <code>pausa dopo-giri secondi</code> = gara ferma</legend>
+<fieldset><legend>3 · Scenario: <code>attesa secondi</code> = auto ferma fino al via, <code>lancio secondi</code> = l'auto gira nel riscaldamento e tu regoli il ritmo con il cursore seguendo la barra dell'app auto; poi un turno per riga: <code>giri [rifornimento|box|corsia secondi]</code> (pit dopo quei giri). Eventi: <code>sc dal-giro quanti-giri [velocità%]</code> = giri lenti per tutti, <code>pausa dopo-giri secondi</code> = gara ferma, <code>ritmo dal-giro quanti-giri velocità%</code> = cambia solo il nostro ritmo (per vedere i colori del passo)</legend>
 <textarea id="piano" spellcheck="false">lancio 300
 5 rifornimento 30
 5 corsia 70

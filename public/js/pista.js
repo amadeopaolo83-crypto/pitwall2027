@@ -103,7 +103,7 @@
   //   giri = quanti giri completi di pista prima del pit (puo' essere 0 e frazioni non servono: si finisce all'ingresso)
   //   senza `pit` l'ultimo tratto e' solo "giri" giri e si ferma li' (si continua a girare, poi basta)
   function pianifica(pista, piano, opz) {
-    const o = Object.assign({ vMax: 55, aLat: 9, aAcc: 5.5, aFren: 11, vPartenza: 30, offset: null, rallentamenti: [], pause: [] }, opz || {});
+    const o = Object.assign({ vMax: 55, aLat: 9, aAcc: 5.5, aFren: 11, vPartenza: 30, offset: null, rallentamenti: [], ritmi: [], pause: [] }, opz || {});
     // rallentamenti: [{ daGiro, giri, fattore }] (safety car: velocita' x fattore tra daGiro e daGiro+giri, in giri completati)
     // pause: [{ giro, durataS }] (bandiera rossa: ferma sul traguardo dopo "giro" giri completati)
     let prog = 0;   // giri completati (frazionario)
@@ -112,6 +112,8 @@
     const pushT = (p, tetto, extra) => nodi.push(Object.assign({ x: p.x, y: p.y, tetto }, extra || {}));
     let i = pista.inizio;
     const T = pista.T, n = pista.n;
+    // ritmi: [{ daGiro, giri, fattore }] come rallentamenti, ma solo per la nostra auto (non e' una neutralizzazione: gli altri non rallentano)
+    const fattoreR = (g) => { for (const r of (o.ritmi || [])) if (g >= r.daGiro - 1e-9 && g < r.daGiro + r.giri - 1e-9) return r.fattore; return 1; };
     const fattoreA = (g) => { for (const r of o.rallentamenti) if (g >= r.daGiro - 1e-9 && g < r.daGiro + r.giri - 1e-9) return r.fattore; return 1; };
     const aggiungiPista = (da, nodiAvanti) => {
       for (let k = 0; k < nodiAvanti; k++) {
@@ -122,6 +124,7 @@
           const ps = o.pause.find((q) => q.giro === Math.round(prog));
           if (ps) { extra.sosta = ps.durataS; extra.dove = 'pausa'; }
         }
+        const fr = fattoreR(prog); if (fr !== 1) extra.ritmoF = fr;     // il nostro ritmo: tempi dilatati (curve comprese), non solo i rettilinei
         pushT(T[idx], o.vMax * f, extra);
         prog += 1 / n;
       }
@@ -198,7 +201,7 @@
     const tempo = new Array(N).fill(0), partenza = new Array(N).fill(0); // partenza[k]: quando riparte dal nodo k
     for (let k = 1; k < N; k++) {
       const somma = v[k - 1] + v[k];
-      const dt = somma > 1e-6 ? 2 * ds[k] / somma : 1;
+      const dt = (somma > 1e-6 ? 2 * ds[k] / somma : 1) / (nodi[k].ritmoF || 1);
       tempo[k] = partenza[k - 1] + dt;
       partenza[k] = tempo[k] + (nodi[k].sosta || 0);
     }

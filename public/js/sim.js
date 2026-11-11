@@ -5,13 +5,13 @@
   const $ = (id) => document.getElementById(id);
   let gps = null, pista = null, corsa = null, guida = null, rumF = null, rumC = null, socket = null, timer = null;
   let tr0 = 0, salto = 0, trUlt = 0, fase = 'fermo', zeroS = 0, modoLancio = false, raceT0 = 0, ultVerita = 0, partito = false, nCross = 0;
-  let avvisato = false, rall = [], pau = [], sink = 'app', canale = null, codiceOra = '';
+  let avvisato = false, rall = [], rit = [], pau = [], sink = 'app', canale = null, codiceOra = '';
 
   function scrivi(s) { const l = $('log'); l.textContent += s + '\n'; l.scrollTop = l.scrollHeight; }
   function fmt(s) { const sg = s < 0 ? '-' : ''; s = Math.abs(s); const m = Math.floor(s / 60); return sg + m + ':' + String(Math.floor(s % 60)).padStart(2, '0'); }
 
   function leggiPiano() {
-    const out = []; zeroS = 0; modoLancio = false; rall = []; pau = [];
+    const out = []; zeroS = 0; modoLancio = false; rall = []; rit = []; pau = [];
     $('piano').value.split('\n').map((r) => r.trim()).filter(Boolean).forEach((r) => {
       const p = r.split(/\s+/);
       if (p[0] === 'attesa' || p[0] === 'lancio') {   // attesa N = auto ferma; lancio N = auto che gira (ritmo con la barra) fino allo zero
@@ -21,6 +21,11 @@
         const da = parseInt(p[1], 10), gg = parseInt(p[2], 10), pc = parseFloat(p[3]) || 55;
         if (!(da >= 1 && gg >= 1 && pc >= 20 && pc <= 95)) throw new Error('Riga "' + r + '": sc dal-giro quanti-giri [velocità %]');
         rall.push({ daGiro: da, giri: gg, fattore: pc / 100 }); return;
+      }
+      if (p[0] === 'ritmo') {          // ritmo solo nostro (gli altri no): ritmo <dal giro> <per quanti giri> <velocita' %>  (es. ritmo 3 4 70)
+        const da = parseInt(p[1], 10), gg = parseInt(p[2], 10), pc = parseFloat(p[3]);
+        if (!(da >= 1 && gg >= 1 && pc >= 40 && pc <= 130)) throw new Error('Riga "' + r + '": ritmo dal-giro quanti-giri velocità% (40-130)');
+        rit.push({ daGiro: da, giri: gg, fattore: pc / 100 }); return;
       }
       if (p[0] === 'pausa') {         // gara ferma: pausa <dopo quanti giri> <secondi>
         const gi = parseInt(p[1], 10), se = parseFloat(p[2]);
@@ -107,7 +112,7 @@
     const off = { dx: parseFloat($('dx').value) || 0, dy: parseFloat($('dy').value) || 0 };
     const giroS = parseFloat($('giro').value) || 0;
     const opz = giroS > 0 ? Pista.calibra(pista, giroS) : {};
-    corsa = Pista.pianifica(pista, piano, Object.assign({}, opz, { offset: off, rallentamenti: rall, pause: pau }));
+    corsa = Pista.pianifica(pista, piano, Object.assign({}, opz, { offset: off, rallentamenti: rall, ritmi: rit, pause: pau }));
     guida = modoLancio ? Pista.guida(pista, opz, off) : null;
     const seme = parseInt($('seme').value, 10) || 1;
     rumF = $('rumore').checked ? Pista.rumorePunto(pista, { seme }) : null;
