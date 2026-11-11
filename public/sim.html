@@ -15,16 +15,17 @@ button.r{background:#7a2a2a;border-color:#b04444} .riga{display:flex;gap:8px;fle
  <div class="riga"><input type="file" id="file" accept=".json,application/json"><button id="esempio">Usa il circuito di esempio</button></div>
  <div id="circ"><small>Nessun circuito.</small></div></fieldset>
 <fieldset><legend>2 · Squadra e server</legend>
- <div class="riga"><label>Codice squadra <input id="codice" size="10" value="SIM"></label><label>Server <input id="srv" size="28" placeholder="(questo sito)"></label></div></fieldset>
-<fieldset><legend>3 · Scenario: <code>attesa secondi</code> = lancio con l'auto ferma; poi un turno per riga: <code>giri [rifornimento|box secondi]</code> (pit dopo quei giri). Eventi: <code>sc dal-giro quanti-giri [velocità%]</code> = safety car, <code>pausa dopo-giri secondi</code> = bandiera rossa</legend>
-<textarea id="piano" spellcheck="false">attesa 300
+ <div class="riga"><label>Codice squadra <input id="codice" size="10" value="SIM"></label><label>Server <input id="srv" size="28" placeholder="(questo sito)"></label><label>Posizione verso <select id="uscita"><option value="app">l’app auto (stesso browser)</option><option value="server">direttamente al server</option></select></label><a href="/?sim=1" target="_blank" style="color:#7fc1ff">Apri l’app auto</a></div></fieldset>
+<fieldset><legend>3 · Scenario: <code>attesa secondi</code> = auto ferma fino al via, <code>lancio secondi</code> = l'auto gira nel riscaldamento e tu regoli il ritmo con il cursore seguendo la barra dell'app auto; poi un turno per riga: <code>giri [rifornimento|box|corsia secondi]</code> (pit dopo quei giri). Eventi: <code>sc dal-giro quanti-giri [velocità%]</code> = safety car, <code>pausa dopo-giri secondi</code> = bandiera rossa</legend>
+<textarea id="piano" spellcheck="false">lancio 300
 5 rifornimento 30
+5 corsia 70
 5 box 90
-5 rifornimento 30
 2
-sc 12 2 55
-pausa 9 120</textarea>
+sc 10 2 55
+pausa 7 120</textarea>
  <div class="riga"><label>Sfasamento E <input id="dx" type="number" value="0" step="0.5" style="width:70px"> m</label><label>N <input id="dy" type="number" value="0" step="0.5" style="width:70px"> m</label><label>Giro <input id="giro" type="number" value="100" min="0" style="width:60px"> s (0 = non tarare)</label><label>Seme <input id="seme" type="number" value="1" style="width:60px"></label><label><input type="checkbox" id="rumore" checked> rumore GPS</label><label><input type="checkbox" id="timing" checked> timing finto</label><label>Nostro n. <input id="numero" value="77" size="4"></label></div></fieldset>
+<div class="riga"><label>Ritmo nel lancio <input id="ritmo" type="range" min="0.5" max="1.15" step="0.01" value="1" style="width:200px"> <b id="ritmoVal">100%</b></label></div>
 <div class="riga"><button class="p" id="via">▶ Avvia</button><button id="salta" title="Salta al prossimo pit (o alla fine del lancio)">⏭ Salta</button><button class="r" id="stop">■ Ferma</button><span id="stato"></span></div>
 <canvas id="mappa" width="720" height="360"></canvas>
 <div id="log"></div>

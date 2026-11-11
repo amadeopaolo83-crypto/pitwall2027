@@ -140,8 +140,14 @@
         const c0 = pista.corsia[0];
         const rac = ricampiona([T[pista.ingresso], c0], 2);
         rac.slice(1, -1).forEach((p) => pushT(p, pista.limiteMs * 1.4));
-        const bersaglio = st.pit.dove === 'box' ? pista.centroBox : pista.centroRif;
-        const kSosta = bersaglio ? piuVicino(pista.corsia, bersaglio).i : -1;
+        let bersaglio = st.pit.dove === 'box' ? pista.centroBox : pista.centroRif;
+        let kSosta = bersaglio ? piuVicino(pista.corsia, bersaglio).i : -1;
+        if (st.pit.dove === 'corsia') {      // ferma in corsia, il piu' lontano possibile da box e rifornimento
+          const zone = [pista.centroBox, pista.centroRif].filter(Boolean);
+          let best = -1, bd = -1;
+          pista.corsia.forEach((q, k) => { if (k < 5 || k > pista.corsia.length - 6) return; const d = zone.length ? Math.min(...zone.map((z) => dist(q, z))) : k; if (d > bd) { bd = d; best = k; } });
+          kSosta = best; bersaglio = best >= 0 ? pista.corsia[best] : null;
+        }
         // se la zona e' staccata dalla corsia (piu' di 6 m) l'auto ci va con una deviazione lenta, si ferma e torna sulla corsia
         const fuori = bersaglio && kSosta >= 0 ? dist(pista.corsia[kSosta], bersaglio) : 0;
         const deviazione = fuori > 6;
@@ -261,18 +267,18 @@
   // ---------- il telefono: errore del GPS ----------
   // opz: seme, sigmaLento (m, deriva lenta), tauLento (s), sigmaVeloce (m), accDichiarata (m), sigmaVel (m/s),
   //      perdita (probabilita' di punto mancante), zonaPeggiore: [{ da, a, acc }] intervalli di tempo con precisione peggiore
-  function rumore(corsa, opz) {
+  function rumorePunto(pista, opz) {
     const o = Object.assign({ seme: 1, sigmaLento: 1.2, tauLento: 25, sigmaVeloce: 0.8, accDichiarata: 4, sigmaVel: 0.25, perdita: 0.01, zonaPeggiore: [] }, opz || {});
     const r = casuale(o.seme);
     let ex = 0, ey = 0, tUlt = null;
-    const pr = corsa.pista.pr;
-    return function (t) {
+    const pr = pista.pr;
+    // w: posizione vera { lat, lng, v } all'istante t
+    return function (w, t) {
       const dt = tUlt == null ? 1 : Math.max(0.05, t - tUlt);
       tUlt = t;
       const phi = Math.exp(-dt / o.tauLento), q = o.sigmaLento * Math.sqrt(1 - phi * phi);
       ex = phi * ex + q * r.gauss(); ey = phi * ey + q * r.gauss();
       if (r.uni() < o.perdita) return null;
-      const w = corsa.vero(t);
       const peggio = o.zonaPeggiore.find((z) => t >= z.da && t <= z.a);
       const molt = peggio ? peggio.acc / o.accDichiarata : 1;
       const p = pr.xy(w);
@@ -280,6 +286,10 @@
       const v = w.v < 0.05 ? Math.abs(r.gauss()) * 0.08 : Math.max(0, w.v + r.gauss() * o.sigmaVel);
       return { lat: m.lat, lng: m.lng, acc: Math.round((o.accDichiarata * molt + r.uni() * 2) * 10) / 10, v: Math.round(v * 100) / 100 };
     };
+  }
+  function rumore(corsa, opz) {
+    const f = rumorePunto(corsa.pista, opz);
+    return function (t) { return f(corsa.vero(t), t); };
   }
 
   // Un circuito di esempio: due rettilinei con due tornanti, un'ansa sul retro e la corsia box lungo il rettilineo
@@ -306,6 +316,42 @@
     };
   }
 
+  // Guida a ritmo variabile (per il lancio): l'auto gira sul tracciato e il "pilota" cambia ritmo in qualsiasi momento
+  // (ritmo 1 = normale, 0.9 = piu' lenta, 1.1 = piu' veloce). Parte da ferma sul traguardo.
+  // g.passo(dt, ritmo) avanza; g.stato() ritorna { lat, lng, v, giri }; g.passaggi = istanti (s dall'inizio) dei passaggi sul traguardo.
+  function guida(pista, opz, offset) {
+    const c = pianifica(pista, [{ giri: 1 }], opz);
+    const nodi = c.nodi, v = c.v, N = nodi.length, off = offset || { dx: 0, dy: 0 };
+    const S = [0];
+    for (let k = 1; k < N; k++) S.push(S[k - 1] + Math.max(0.01, dist(nodi[k - 1], nodi[k])));
+    const chiusura = Math.max(0.01, dist(nodi[N - 1], nodi[0])), L = S[N - 1] + chiusura;
+    let s = 0, t = 0, giri = 0, vNow = 0;
+    const passaggi = [];
+    function trova(x) {                  // segmento e frazione alla distanza x
+      if (x >= S[N - 1]) { const f = (x - S[N - 1]) / chiusura; return { a: nodi[N - 1], b: nodi[0], f, va: v[N - 1], vb: v[0] }; }
+      let lo = 0, hi = N - 1;
+      while (lo < hi - 1) { const m = (lo + hi) >> 1; if (S[m] <= x) lo = m; else hi = m; }
+      return { a: nodi[lo], b: nodi[lo + 1], f: (x - S[lo]) / (S[lo + 1] - S[lo]), va: v[lo], vb: v[lo + 1] };
+    }
+    function passo(dt, ritmo) {
+      const r = Math.max(0.2, Math.min(1.2, ritmo == null ? 1 : ritmo));
+      let resto = dt;
+      while (resto > 1e-9) {
+        const h = Math.min(0.1, resto), q = trova(s);
+        vNow = Math.max(3, (q.va + (q.vb - q.va) * q.f) * r);
+        const prima = s; s += vNow * h; t += h; resto -= h;
+        if (s >= L) { s -= L; giri++; passaggi.push(t - (s / (vNow || 1))); }
+        void prima;
+      }
+    }
+    function stato() {
+      const q = trova(s);
+      const p = { x: q.a.x + (q.b.x - q.a.x) * q.f + off.dx, y: q.a.y + (q.b.y - q.a.y) * q.f + off.dy };
+      return Object.assign(pista.pr.ll(p), { v: s === 0 && t === 0 ? 0 : vNow, giri, t });
+    }
+    return { passo, stato, passaggi, lunghezza: L };
+  }
+
   // Opzioni (vMax, aLat, aAcc, aFren) che danno un giro "lanciato" di giroS secondi (la corsia box resta al limite).
   function calibra(pista, giroS, opz) {
     const base = Object.assign({ vMax: 55, aLat: 9, aAcc: 5.5, aFren: 11 }, opz || {});
@@ -319,5 +365,5 @@
     return Object.assign({}, base, { vMax: base.vMax * k, aLat: base.aLat * k * k, aAcc: base.aAcc * k * k, aFren: base.aFren * k * k, vPartenza: base.vMax * k * 0.6 });
   }
 
-  return { costruisci, pianifica, calibra, rumore, esempio, casuale, proiettore, lisciaChiusa, ricampiona };
+  return { costruisci, pianifica, calibra, guida, rumore, rumorePunto, esempio, casuale, proiettore, lisciaChiusa, ricampiona };
 });

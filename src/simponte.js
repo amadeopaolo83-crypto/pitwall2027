@@ -39,17 +39,21 @@ function generaRivale(i, cfg, fino) {
     if (sc) durata /= sc.fattore;
     let sosta = 0;
     if (giro >= prossimaSosta) {
-      sosta = (sc ? 0.55 : 1) * perdita * (0.9 + 0.2 * r.uni());
+      // tipo di sosta: rifornimento breve, cambio pilota (piu' lungo) o rifornimento lungo (fino a ~3 minuti)
+      const q = r.uni();
+      const tipo = q < 0.55 ? "rifornimento" : q < 0.85 ? "cambio" : "lungo";
+      const fermo = tipo === "rifornimento" ? 25 + r.uni() * 20 : tipo === "cambio" ? 60 + r.uni() * 40 : 120 + r.uni() * 60;
+      sosta = (sc ? 0.55 : 1) * perdita * (0.9 + 0.2 * r.uni()) + fermo;
       if (guasto && !soste.length) sosta += 110;
       prossimaSosta = giro + stint();
-      soste.push(giro);
+      soste.push({ giro, tipo, fermoS: Math.round(fermo * 10) / 10, extraS: Math.round(sosta * 10) / 10, sottoSafety: !!sc });
     }
     let fine = inizio + durata + sosta;
     cfg.pause.forEach((p) => { if (p.da > inizio && p.da < fine) fine += p.durata; });   // bandiera rossa: fermi tutti
     cfg.pause.forEach((p) => { if (inizio >= p.da && inizio < p.da + p.durata) fine += p.da + p.durata - inizio; });
     t = fine; passaggi.push(t); giri.push(t - inizio);
   }
-  return { numero: String(10 + i * 7 + (i % 3)), nome: "Equipaggio " + (i + 1), classe: i % 2 ? "B" : "A", passaggi, giri };
+  return { numero: String(10 + i * 7 + (i % 3)), nome: "Equipaggio " + (i + 1), classe: i % 2 ? "B" : "A", passaggi, giri, soste };
 }
 
 function avvia(corpo) {
@@ -75,7 +79,7 @@ function avvia(corpo) {
     if (rv.numero === numero) rv.numero = String(Number(rv.numero) + 1);
     rivali.push(rv);
   }
-  const noi = { numero, nome: "Noi", classe: "A", passaggi: cfg.passaggi, giri: cfg.passaggi.map((t, k) => t - (k ? cfg.passaggi[k - 1] : 0)) };
+  const noi = { numero, nome: "Noi", classe: "A", soste: [], passaggi: cfg.passaggi, giri: cfg.passaggi.map((t, k) => t - (k ? cfg.passaggi[k - 1] : 0)) };
   stati.set(evento, { cfg, auto: [noi].concat(rivali), avvioMs: Date.now() - corpo.tGara * 1000 });
   return { ok: true, auto: nAuto, rivaliGiri: rivali.map((r) => r.passaggi.length) };
 }

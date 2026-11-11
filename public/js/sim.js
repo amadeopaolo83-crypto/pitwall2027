@@ -1,17 +1,22 @@
-// Simulatore auto: usa Pista (pista.js) e manda 'gpsPos' al server come farebbe il telefono dell'auto.
-// Nessun dato falso entra nel resto dell'app: il box vede una normale auto con il GPS.
+// Simulatore auto: usa Pista (pista.js). Fasi: attesa o lancio (auto che gira con ritmo regolabile) -> gara (percorso pianificato).
+// Uscita della posizione: all'app auto aperta nello stesso browser (/?sim=1, via BroadcastChannel) oppure direttamente al server.
+// Timing finto: se il server ha SIM_PONTE=1 la corsa va al finto ponte (src/simponte.js).
 (function () {
   const $ = (id) => document.getElementById(id);
-  let gps = null, pista = null, corsa = null, rum = null, socket = null, timer = null, t0 = 0, ultVerita = 0, attesa = 0, salto = 0, partito = false, rall = [], pau = [];
+  let gps = null, pista = null, corsa = null, guida = null, rumF = null, rumC = null, socket = null, timer = null;
+  let tr0 = 0, salto = 0, trUlt = 0, fase = 'fermo', zeroS = 0, modoLancio = false, raceT0 = 0, ultVerita = 0, partito = false, nCross = 0;
+  let avvisato = false, rall = [], pau = [], sink = 'app', canale = null, codiceOra = '';
 
   function scrivi(s) { const l = $('log'); l.textContent += s + '\n'; l.scrollTop = l.scrollHeight; }
-  function fmt(s) { const m = Math.floor(s / 60); return m + ':' + String(Math.floor(s % 60)).padStart(2, '0'); }
+  function fmt(s) { const sg = s < 0 ? '-' : ''; s = Math.abs(s); const m = Math.floor(s / 60); return sg + m + ':' + String(Math.floor(s % 60)).padStart(2, '0'); }
 
   function leggiPiano() {
-    const out = []; attesa = 0; rall = []; pau = [];
+    const out = []; zeroS = 0; modoLancio = false; rall = []; pau = [];
     $('piano').value.split('\n').map((r) => r.trim()).filter(Boolean).forEach((r) => {
       const p = r.split(/\s+/);
-      if (p[0] === 'attesa') { attesa = Math.max(0, Math.min(3600, parseFloat(p[1]) || 0)); return; }
+      if (p[0] === 'attesa' || p[0] === 'lancio') {   // attesa N = auto ferma; lancio N = auto che gira (ritmo con la barra) fino allo zero
+        zeroS = Math.max(0, Math.min(3600, parseFloat(p[1]) || 0)); modoLancio = p[0] === 'lancio'; return;
+      }
       if (p[0] === 'sc') {            // safety car: sc <dal giro> <per quanti giri> [velocita' %]
         const da = parseInt(p[1], 10), gg = parseInt(p[2], 10), pc = parseFloat(p[3]) || 55;
         if (!(da >= 1 && gg >= 1 && pc >= 20 && pc <= 95)) throw new Error('Riga "' + r + '": sc dal-giro quanti-giri [velocità %]');
@@ -26,7 +31,7 @@
       if (!(giri >= 1 && giri <= 50)) throw new Error('Riga non valida: "' + r + '" (inizia con il numero di giri)');
       const st = { giri };
       if (p[1]) {
-        if (p[1] !== 'rifornimento' && p[1] !== 'box') throw new Error('Riga "' + r + '": dopo i giri scrivi rifornimento o box');
+        if (!['rifornimento', 'box', 'corsia'].includes(p[1])) throw new Error('Riga "' + r + '": dopo i giri scrivi rifornimento, box o corsia');
         st.pit = { dove: p[1], sostaS: Math.max(1, parseFloat(p[2]) || 30) };
       }
       out.push(st);
@@ -50,6 +55,7 @@
     r.onload = () => { try { const d = JSON.parse(r.result); if (d.tipo !== 'pitcomm-circuito' || !d.gps) throw new Error('non e’ un circuito di PitComm'); caricaCircuito(d.gps, f.name); } catch (e) { $('circ').textContent = 'File non valido: ' + e.message; } };
     r.readAsText(f);
   };
+  $('ritmo').oninput = () => { $('ritmoVal').textContent = Math.round($('ritmo').value * 100) + '%'; };
 
   function disegna(auto) {
     const cv = $('mappa'), c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height);
@@ -65,37 +71,35 @@
     if (auto) pt(auto, '#ff5b5b', 7);
   }
 
-  function base() { const u = $('srv').value.trim().replace(/\/+$/, ''); return u || ''; }
+  function base() { return $('srv').value.trim().replace(/\/+$/, ''); }
   function posta(percorso, corpo) {
     return fetch(base() + percorso, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then((r) => r.json());
   }
-  function tGaraOra() { return (Date.now() - t0) / 1000 + salto - attesa; }
-  function avviaTiming(code) {
-    if (!$('timing').checked) return;
-    const numero = $('numero').value.trim() || '77';
-    posta('/sim/ponte/avvia', { evento: code, numero, giroS: parseFloat($('giro').value) || 100, passaggi: corsa.passaggi, finestre: corsa.finestre, pause: corsa.pauseT, tGara: tGaraOra(), seme: parseInt($('seme').value, 10) || 1, nAuto: 14 })
-      .then((j) => {
-        if (j && j.ok) scrivi('Timing finto acceso: ' + j.auto + ' auto, nostro numero ' + numero + '. Nel box: Distacchi → Nostro → indirizzo  https://pitcomm.sim/' + code + '  e numero ' + numero);
-        else scrivi('Timing finto NON acceso: ' + ((j && j.error) || 'risposta non valida') + (j && j.error ? '' : ' (sul server serve SIM_PONTE=1)'));
-      }).catch(() => scrivi('Timing finto NON acceso: server non raggiungibile'));
+  const tGaraOra = (tr) => tr - zeroS;     // tempo dal via (negativo nel lancio): lo zero e' alla fine del lancio
+
+  // Timing finto: all'inizio la griglia (nessun giro); al via la corsa vera, con i passaggi spostati del ritardo di partenza.
+  function inviaTiming(tr, conCorsa) {
+    if (!$('timing').checked) return Promise.resolve();
+    const ritardo = conCorsa ? raceT0 - zeroS : 0, d = (x) => x + ritardo;
+    const corpo = {
+      evento: codiceOra, numero: $('numero').value.trim() || '77', giroS: parseFloat($('giro').value) || 100,
+      passaggi: conCorsa ? corsa.passaggi.map(d) : [], finestre: conCorsa ? corsa.finestre.map((w) => ({ da: d(w.da), a: d(w.a), fattore: w.fattore })) : [],
+      pause: conCorsa ? corsa.pauseT.map((q) => ({ da: d(q.da), durata: q.durata })) : [], tGara: tGaraOra(tr), seme: parseInt($('seme').value, 10) || 1, nAuto: 14,
+    };
+    return posta('/sim/ponte/avvia', corpo).then((j) => {
+      if (j && j.ok) { if (!avvisato) { avvisato = true; scrivi('Timing finto acceso: ' + j.auto + ' auto, nostro n. ' + corpo.numero + '. Nel box: Distacchi → Nostro → https://pitcomm.sim/' + codiceOra + ' e numero ' + corpo.numero); } }
+      else scrivi('Timing finto NON acceso: ' + ((j && j.error) || 'risposta non valida') + (j && j.error ? '' : ' (sul server serve SIM_PONTE=1)'));
+    }).catch(() => scrivi('Timing finto NON acceso: server non raggiungibile'));
   }
 
   function ferma(msg) {
-    if (timer) clearInterval(timer); timer = null;
+    if (timer) clearInterval(timer); timer = null; fase = 'fermo';
     if (socket) { try { socket.disconnect(); } catch (e) {} socket = null; }
+    if (canale) { try { canale.close(); } catch (e) {} canale = null; }
     $('stato').textContent = msg || 'fermo';
   }
-
-  $('salta').onclick = () => {
-    if (!corsa || !timer) return;
-    const t = (Date.now() - t0) / 1000 + salto - attesa;
-    if (t < -1) { salto += -t; scrivi('(salto: fine del lancio)'); if ($('timing').checked) posta('/sim/ponte/salta', { evento: $('codice').value.trim().toUpperCase(), tGara: tGaraOra() }).catch(() => {}); return; }
-    const prossimo = corsa.verita.find((e) => e.tipo === 'entrataLimite' && e.t - 60 > t);
-    if (!prossimo) { scrivi('(nessun altro pit da raggiungere)'); return; }
-    salto += (prossimo.t - 60) - t; scrivi('(salto al prossimo pit: ' + fmt(prossimo.t - 60) + ')');
-    if ($('timing').checked) posta('/sim/ponte/salta', { evento: $('codice').value.trim().toUpperCase(), tGara: tGaraOra() }).catch(() => {});
-  };
   $('stop').onclick = () => ferma('fermato');
+
   $('via').onclick = () => {
     if (!pista) { $('stato').textContent = 'Scegli prima un circuito'; return; }
     let piano; try { piano = leggiPiano(); } catch (e) { $('stato').textContent = e.message; return; }
@@ -103,33 +107,86 @@
     const off = { dx: parseFloat($('dx').value) || 0, dy: parseFloat($('dy').value) || 0 };
     const giroS = parseFloat($('giro').value) || 0;
     const opz = giroS > 0 ? Pista.calibra(pista, giroS) : {};
-    corsa = Pista.pianifica(pista, piano, Object.assign(opz, { offset: off, rallentamenti: rall, pause: pau }));
-    salto = 0; partito = false;
-    rum = $('rumore').checked ? Pista.rumore(corsa, { seme: parseInt($('seme').value, 10) || 1 }) : null;
+    corsa = Pista.pianifica(pista, piano, Object.assign({}, opz, { offset: off, rallentamenti: rall, pause: pau }));
+    guida = modoLancio ? Pista.guida(pista, opz, off) : null;
+    const seme = parseInt($('seme').value, 10) || 1;
+    rumF = $('rumore').checked ? Pista.rumorePunto(pista, { seme }) : null;
+    rumC = $('rumore').checked ? Pista.rumore(corsa, { seme }) : null;
+    sink = $('uscita').value; codiceOra = $('codice').value.trim().toUpperCase();
+    avvisato = false; salto = 0; trUlt = 0; raceT0 = 0; ultVerita = 0; partito = false; nCross = 0;
+    fase = zeroS > 0 ? (modoLancio ? 'lancio' : 'attesa') : 'gara';
     $('log').textContent = '';
-    scrivi('Scenario: lancio ' + fmt(attesa) + ' + gara ' + fmt(corsa.durata) + ' (totale ' + fmt(attesa + corsa.durata) + '), ' + corsa.verita.filter((e) => e.tipo === 'sosta').length + ' soste' + (giroS > 0 ? ', giro ' + giroS + ' s' : ''));
-    const code = $('codice').value.trim().toUpperCase();
-    const url = $('srv').value.trim();
-    socket = url ? io(url) : io();
-    socket.on('connect', () => socket.emit('join', { code, role: 'auto' }, (res) => {
-      if (!res || !res.ok) { scrivi('Entrata rifiutata: ' + (res && res.error)); ferma('errore'); return; }
-      scrivi('Auto entrata nella squadra ' + code + (res.state && res.state.gps && res.state.gps.on ? '' : ' (GPS spento sul box: il server scarta le posizioni)'));
-      t0 = Date.now(); ultVerita = 0; timer = setInterval(tick, 1000); tick();
-      avviaTiming(code);
-    }));
-    socket.on('connect_error', (e) => scrivi('Errore di collegamento: ' + (e && e.message)));
+    scrivi('Scenario: ' + (zeroS ? (modoLancio ? 'lancio ' : 'attesa ') + fmt(zeroS) + ' + ' : '') + 'gara ' + fmt(corsa.durata) + ' (totale ' + fmt(zeroS + corsa.durata) + '), ' + corsa.verita.filter((e) => e.tipo === 'sosta').length + ' soste' + (giroS > 0 ? ', giro ' + giroS + ' s' : ''));
+    const partiPoi = () => {
+      tr0 = Date.now(); timer = setInterval(tick, 1000); tick();
+      if (fase !== 'gara') inviaTiming(0, false);      // griglia prima del via; se si parte subito c'e' solo la corsa (nel primo tick)
+    };
+    if (sink === 'app') {
+      canale = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('pitcomm-sim-gps') : null;
+      scrivi(canale ? 'Posizione verso l’app auto (aprila con ?sim=1, stesso browser, GPS acceso sul box).' : 'Questo browser non ha BroadcastChannel: scegli "direttamente al server".');
+      partiPoi();
+    } else {
+      const url = base();
+      socket = url ? io(url) : io();
+      socket.on('connect', () => socket.emit('join', { code: codiceOra, role: 'auto' }, (res) => {
+        if (!res || !res.ok) { scrivi('Entrata rifiutata: ' + (res && res.error)); ferma('errore'); return; }
+        scrivi('Auto entrata nella squadra ' + codiceOra + (res.state && res.state.gps && res.state.gps.on ? '' : ' (GPS spento sul box: il server scarta le posizioni)'));
+        if (!timer) partiPoi();
+      }));
+      socket.on('connect_error', (e) => scrivi('Errore di collegamento: ' + (e && e.message)));
+    }
   };
 
+  function emetti(q) {
+    if (!q) return;
+    if (sink === 'app') { if (canale) canale.postMessage({ lat: q.lat, lng: q.lng, acc: q.acc, v: q.v }); }
+    else if (socket && socket.connected) socket.emit('gpsPos', { lat: q.lat, lng: q.lng, acc: q.acc, v: q.v });
+  }
+
   function tick() {
-    const tr = (Date.now() - t0) / 1000 + salto;      // tempo dall'avvio del simulatore
-    const t = tr - attesa;                              // tempo di gara (negativo durante il lancio)
-    if (!partito && t >= 0) { partito = true; scrivi('00:00 VERO: partenza gara'); }
-    if (t > corsa.durata + 20) { ferma('finito'); scrivi('Fine scenario'); return; }
-    const w = corsa.vero(Math.max(0, t));
-    corsa.verita.forEach((e, i) => { if (i >= ultVerita && e.t <= t) { ultVerita = i + 1; scrivi(fmt(e.t) + ' VERO: ' + e.tipo + (e.dove ? ' ' + e.dove : '') + (e.durataS ? ' ' + e.durataS + ' s' : '')); } });
-    const q = rum ? rum(Math.max(0, t)) : { lat: w.lat, lng: w.lng, acc: 3, v: w.v };
-    if (q && socket && socket.connected) socket.emit('gpsPos', { lat: q.lat, lng: q.lng, acc: q.acc, v: q.v });
-    $('stato').textContent = (t < 0 ? 'lancio -' + fmt(-t) : 'gara ' + fmt(t)) + ' · ' + Math.round(w.v * 3.6) + ' km/h' + (q ? '' : ' · punto perso');
+    const tr = (Date.now() - tr0) / 1000 + salto;
+    let w = null, t = 0;
+    if (fase === 'attesa') {
+      w = corsa.vero(0);
+      if (tr >= zeroS) { fase = 'gara'; raceT0 = tr; }
+    } else if (fase === 'lancio') {
+      const ritmo = parseFloat($('ritmo').value) || 1;
+      guida.passo(Math.max(0, tr - trUlt), ritmo);
+      w = guida.stato();
+      while (nCross < guida.passaggi.length) {          // passaggi sulla linea nel lancio
+        const tc = guida.passaggi[nCross++];
+        const dopo = tc - zeroS;
+        scrivi(fmt(tc - zeroS) + ' VERO: passaggio sul traguardo (' + (dopo >= 0 ? '+' : '') + dopo.toFixed(1) + ' s dallo zero)' + (dopo < 0 ? ' · giro perso se in gara' : ''));
+        if (dopo >= 0 && fase === 'lancio') { fase = 'gara'; raceT0 = tc; }
+      }
+    }
+    trUlt = tr;
+    if (fase === 'gara') {
+      t = tr - raceT0;
+      if (!partito) { partito = true; scrivi('00:00 VERO: partenza gara (primo passaggio dopo lo zero: ' + fmt(raceT0 - zeroS) + ' dal via)'); inviaTiming(tr, true); }
+      if (t > corsa.durata + 20) { ferma('finito'); scrivi('Fine scenario'); return; }
+      w = corsa.vero(Math.max(0, t));
+      corsa.verita.forEach((e, i) => { if (i >= ultVerita && e.t <= t) { ultVerita = i + 1; scrivi(fmt(e.t) + ' VERO: ' + e.tipo + (e.dove ? ' ' + e.dove : '') + (e.durataS ? ' ' + e.durataS + ' s' : '')); } });
+    }
+    const q = rumF ? (fase === 'gara' ? rumC(Math.max(0, t)) : rumF(w, tr)) : { lat: w.lat, lng: w.lng, acc: 3, v: w.v };
+    emetti(q);
+    const ver = fase === 'gara' ? 'gara ' + fmt(t) : (fase === 'lancio' ? 'lancio, zero tra ' + fmt(zeroS - tr) : 'attesa, zero tra ' + fmt(zeroS - tr));
+    $('stato').textContent = ver + ' · ' + Math.round(w.v * 3.6) + ' km/h' + (q ? '' : ' · punto perso');
     disegna(pista.pr.xy(w));
   }
+
+  $('salta').onclick = () => {
+    if (!timer || !corsa) return;
+    const tr = (Date.now() - tr0) / 1000 + salto;
+    if (fase === 'gara') {
+      const t = tr - raceT0;
+      const prossimo = corsa.verita.find((e) => e.tipo === 'entrataLimite' && e.t - 60 > t);
+      if (!prossimo) { scrivi('(nessun altro pit da raggiungere)'); return; }
+      salto += (prossimo.t - 60) - t; scrivi('(salto al prossimo pit: ' + fmt(prossimo.t - 60) + ')');
+      if ($('timing').checked) posta('/sim/ponte/salta', { evento: codiceOra, tGara: tGaraOra(tr + (prossimo.t - 60) - t) }).catch(() => {});
+    } else if (zeroS - tr > 25) {
+      salto += zeroS - 25 - tr; scrivi('(salto: mancano 25 s allo zero)');
+      if ($('timing').checked) posta('/sim/ponte/salta', { evento: codiceOra, tGara: tGaraOra(tr + zeroS - 25 - tr) }).catch(() => {});
+    }
+  };
 })();

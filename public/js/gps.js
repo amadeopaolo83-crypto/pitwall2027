@@ -19,6 +19,10 @@ const GPS_PERSO_MS = 20000;    // senza punti per tanto = segnale perso
 const GPS_USCITA_EXTRA = 5;    // metri in piu' per uscire da una zona in cui si e' gia'
 
 const GPS_FERMO_M = 6;         // metri: entro tanto dal punto di sosta si considera fermo
+const GPS_MOTO_MS = 4;         // m/s: sopra questa velocita' l'auto e' in movimento = in pista (il consumo continua, anche in corsia)
+const GPS_SUPISTA_MS = 1.5;    // m/s: sul tracciato disegnato e almeno cosi' veloce = in pista
+const GPS_TRACCIATO_M = 10;    // entro tanti metri dal tracciato disegnato = sulla pista
+const GPS_ATTESA_PISTA_MS = 3000; // per tornare "in pista" basta questo (si riparte, non serve aspettare)
 const GPS_PASSO_REG_M = 3;     // registrazione corsia: un punto ogni tanti metri
 
 let gpsCfg = { on: false, box: null, refuel: null, refuelPoly: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 60, traguardo: null, giroRif: null, lancioS: 240, tracciato: null, limiteKmh: 60, allineamento: null };
@@ -37,7 +41,31 @@ let gpsScia = [];              // ultimi punti dell'auto (per la scia sulla mapp
 let gpsVel = null;             // velocita' dell'auto in m/s (se si conosce)
 let gpsInCorsia = false;       // l'ultimo punto preciso e' dentro la corsia box
 
-function gpsApplica(){ try{ return localStorage.getItem('pc_gps_applica') === '1'; }catch(e){ return false; } }
+// Applica lo stato dal GPS: acceso di norma; si spegne solo se lo si e' spento a mano ('0').
+function gpsApplica(){ try{ return localStorage.getItem('pc_gps_applica') !== '0'; }catch(e){ return true; } }
+
+// Simulatore (public/sim.html): con ?sim=1 l'app auto prende la posizione dal simulatore (stesso browser) invece che dal GPS.
+// ?sim=0 lo spegne. Sui telefoni veri non viene mai acceso.
+try{
+  const qs = new URLSearchParams(location.search).get('sim');
+  if(qs === '1') localStorage.setItem('pc_sim_gps', '1'); else if(qs === '0') localStorage.removeItem('pc_sim_gps');
+}catch(e){}
+function gpsSimAttivo(){ try{ return localStorage.getItem('pc_sim_gps') === '1' && typeof BroadcastChannel !== 'undefined'; }catch(e){ return false; } }
+function gpsOsserva(cb, err, opt){
+  if(gpsSimAttivo()){
+    const ch = new BroadcastChannel('pitcomm-sim-gps');
+    ch.onmessage = (ev) => {
+      const d = ev.data;
+      if(d && Number.isFinite(d.lat) && Number.isFinite(d.lng)) cb({ coords: { latitude: d.lat, longitude: d.lng, accuracy: Number.isFinite(d.acc) ? d.acc : 4, speed: Number.isFinite(d.v) ? d.v : null }, timestamp: Date.now() });
+    };
+    return { sim: ch };
+  }
+  return navigator.geolocation.watchPosition(cb, err, opt);
+}
+function gpsFermaOsserva(id){
+  if(id && id.sim){ try{ id.sim.close(); }catch(e){} return; }
+  if(navigator.geolocation) navigator.geolocation.clearWatch(id);
+}
 
 function gpsDistanza(a, b){
   const R = 6371000, rad = Math.PI / 180;
@@ -99,9 +127,9 @@ function gpsNumero(chiave, el, min, max){
 // ---------- auto: invio della posizione ----------
 
 function gpsAggiornaInvio(){
-  const deveInviare = role === 'auto' && gpsCfg.on && navigator.geolocation;
+  const deveInviare = role === 'auto' && gpsCfg.on && (navigator.geolocation || gpsSimAttivo());
   if(deveInviare && gpsWatch === null){
-    gpsWatch = navigator.geolocation.watchPosition((pos) => {
+    gpsWatch = gpsOsserva((pos) => {
       // fascia di lancio: usa tutti i punti, con l'istante del GPS portato sul tempo sincronizzato
       if(typeof lancioPunto === 'function'){
         try{ lancioPunto({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy, v: pos.coords.speed, t: (pos.timestamp || Date.now()) + clockOffset }); }catch(e){}
@@ -115,7 +143,7 @@ function gpsAggiornaInvio(){
     }, () => { /* nessun permesso o nessun segnale: si riprova da soli */ },
     { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
   } else if(!deveInviare && gpsWatch !== null){
-    navigator.geolocation.clearWatch(gpsWatch);
+    gpsFermaOsserva(gpsWatch);
     gpsWatch = null;
   }
 }
@@ -248,6 +276,34 @@ function gpsZonaDi(p){
   return 'pista';
 }
 
+// Distanza dal tracciato disegnato (linea chiusa), infinita se non c'e'.
+function gpsDistTracciato(p){
+  const c = gpsCfg.tracciato;
+  if(!c || c.length < 3) return Infinity;
+  const k = Math.PI / 180, mLat = 111320, mLng = 111320 * Math.cos(p.lat * k);
+  const X = (q) => (q.lng - p.lng) * mLng, Y = (q) => (q.lat - p.lat) * mLat;
+  let min = Infinity;
+  for(let i = 0; i < c.length; i++){
+    const a = c[i], b = c[(i + 1) % c.length];
+    const ax = X(a), ay = Y(a), bx = X(b), by = Y(b), dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+    const t = l2 > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+    min = Math.min(min, Math.hypot(ax + t * dx, ay + t * dy));
+  }
+  return min;
+}
+
+// Stato candidato: in movimento (o sul tracciato e non fermo) = in pista; da fermi vale la zona.
+// Senza velocita' si ragiona come prima (solo zona).
+function gpsCandidatoDi(p){
+  const zona = gpsZonaDi(p);
+  const v = Number.isFinite(gpsVel) ? gpsVel : null;
+  if(v != null){
+    if(v >= GPS_MOTO_MS) return 'pista';
+    if(v >= GPS_SUPISTA_MS && gpsDistTracciato(p) <= GPS_TRACCIATO_M) return 'pista';
+  }
+  return zona;
+}
+
 function gpsRicevi(p){
   if(role !== 'box' || !gpsCfg.on || !p) return;
   const prec = !(p.acc != null && p.acc > GPS_ACC_MAX);
@@ -262,10 +318,10 @@ function gpsRicevi(p){
   if(!prec) return;
   if(!gpsCfg.box && !gpsCfg.refuel && !gpsCfg.refuelPoly) return; // senza zone non si decide niente
   gpsUltimaBuona = Date.now();
-  const cand = gpsZonaDi(p);
+  const cand = gpsCandidatoDi(p);
   const ora = Date.now();
   if(cand !== gpsCandidato){ gpsCandidato = cand; gpsCandidatoDa = ora; }
-  if(cand !== gpsStato && ora - gpsCandidatoDa >= GPS_ATTESA_MS){
+  if(cand !== gpsStato && ora - gpsCandidatoDa >= (cand === 'pista' ? GPS_ATTESA_PISTA_MS : GPS_ATTESA_MS)){
     // il GPS "decide" (in pista / ai box / rifornimento) solo sul box primario; il secondario si limita a mostrarlo
     if(boxPrimario) gpsCambiaStato(cand); else { gpsStato = cand; gpsStatoDa = ora; }
   }
