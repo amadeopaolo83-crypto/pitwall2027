@@ -53,3 +53,8 @@ Su Render (Pitwall2027, solo la copia di prova) aggiungi la variabile `SIM_PONTE
 la corsa al server. Nel box: Distacchi → Nostro → indirizzo `https://pitcomm.sim/CODICE-SQUADRA` e numero 77 (o quello messo nel simulatore).
 Scenario: `sc dal-giro quanti-giri [velocita'%]` = giri lenti per tutti (tutti rallentano, anche la nostra auto), `pausa dopo-giri secondi` = gara ferma; `ritmo dal-giro quanti-giri velocita'%` = cambia solo il nostro ritmo (tutti fermi sul traguardo).
 Gli altri sono piloti virtuali: stesso formato del ponte vero, solo tempi.
+- `gara-e2e.js`: gara completa a tempo reale (~47 min, non in `tutte.js`): server vero con `SIM_PONTE=1`, box + `/sim.html` +
+  app auto `/?sim=1` nello stesso browser. Timer 5:00 + 40:00 e simulatore insieme, lancio (fascia e giro di riferimento; il
+  "pilota" segue la fascia con il cursore del ritmo), soste, giri lenti per tutti, pausa. Controlla colori dei distacchi,
+  riga NOI, Assoluta/Categoria dalla scheda Gara, strategia, domanda cambio pilota, turno e stint massimo, in pista / ai box,
+  carburante, tasti che si illuminano. Schermate e dati in `PROVE_OUT/gara-e2e`. `GARA_CORTA=1` = versione breve per provarla.
