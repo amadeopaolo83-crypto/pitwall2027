@@ -222,6 +222,19 @@ function pulisciGps(attuali, d) {
     if (ok) g.giroRif = { t: Math.round(d.giroRif.t * 100) / 100, p: d.giroRif.p.map((q) => [Math.round(q[0] * 1e6) / 1e6, Math.round(q[1] * 1e6) / 1e6, Math.round(q[2] * 100) / 100]) };
   }
   if (Number.isFinite(d.lancioS) && d.lancioS >= 60 && d.lancioS <= 900) g.lancioS = Math.round(d.lancioS);
+  // linea della pista (giro chiuso, punti toccati sulla mappa), limite di velocita' in corsia, ultimo allineamento
+  if (d.tracciato === null) g.tracciato = null;
+  else if (Array.isArray(d.tracciato) && d.tracciato.length >= 8 && d.tracciato.length <= 500 && d.tracciato.every(punto)) {
+    g.tracciato = d.tracciato.map((q) => ({ lat: Math.round(q.lat * 1e7) / 1e7, lng: Math.round(q.lng * 1e7) / 1e7 }));
+  }
+  if (Number.isFinite(d.limiteKmh) && d.limiteKmh >= 20 && d.limiteKmh <= 150) g.limiteKmh = Math.round(d.limiteKmh);
+  if (d.allineamento === null) g.allineamento = null;
+  else if (d.allineamento && typeof d.allineamento === "object" && Number.isFinite(d.allineamento.dx) && Number.isFinite(d.allineamento.dy)
+    && Math.abs(d.allineamento.dx) <= 500 && Math.abs(d.allineamento.dy) <= 500) {
+    g.allineamento = { dx: Math.round(d.allineamento.dx * 10) / 10, dy: Math.round(d.allineamento.dy * 10) / 10,
+      n: Number.isFinite(d.allineamento.n) ? Math.round(d.allineamento.n) : 0, scarto: Number.isFinite(d.allineamento.scarto) ? Math.round(d.allineamento.scarto * 10) / 10 : null,
+      at: Number.isFinite(d.allineamento.at) ? d.allineamento.at : null };
+  }
   return g;
 }
 

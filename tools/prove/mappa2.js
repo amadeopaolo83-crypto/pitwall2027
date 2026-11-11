@@ -56,7 +56,7 @@ srv.listen(8777, async () => {
   await pg.evaluate(() => mpVaiA('auto')); await pg.waitForTimeout(200);
   await pg.screenshot({ path: C.OUT + '/mappa-auto2.png' });
   console.log(JSON.stringify(R)); console.log('errs', errs);
-  const V = C.controlli('mappa2'), CAMPI = 'box,corsia,fermoS,giroRif,lancioS,larg,rBox,rRefuel,refuel,refuelPoly,traguardo';
+  const V = C.controlli('mappa2'), CAMPI = 'allineamento,box,corsia,fermoS,giroRif,lancioS,larg,limiteKmh,rBox,rRefuel,refuel,refuelPoly,tracciato,traguardo';
   V.ok('traguardo: 2 estremi, il terzo ignorato, salvato', R.estremi === 2 && R.terzoIgnorato === 2 && R.salvato === 2, [R.estremi, R.terzoIgnorato, R.salvato]);
   V.ok('traguardo di circa 30 m', R.lungh >= 25 && R.lungh <= 35, R.lungh);
   V.ok('sposta: 4 m est e 2 m nord', R.off && R.off.dx === 4 && R.off.dy === 2, R.off);

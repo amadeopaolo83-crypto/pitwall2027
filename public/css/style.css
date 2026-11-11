@@ -394,9 +394,9 @@ body.mp-aperta{overflow:hidden;}
 .mp-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;}
 .mp-titolo{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);}
 .mp-modi{margin:0 12px 8px;padding:0;position:static;}
-#mpCanvas{flex:1;min-height:0;background:#1a1d21;}
+#mpCanvas{flex:1 1 auto;min-height:34vh;background:#1a1d21;}
 .mp-info{padding:6px 12px;font-size:12px;color:var(--text);min-height:28px;}
-.mp-panel{padding:4px 12px calc(10px + env(safe-area-inset-bottom));}
+.mp-panel{padding:4px 12px calc(10px + env(safe-area-inset-bottom));max-height:42vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .mp-righe{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;}
 .mp-righe .btn{flex:1 1 auto;}
 .mp-aiuto{font-size:12px;color:var(--muted);line-height:1.4;margin-bottom:8px;}
@@ -436,8 +436,8 @@ body.mp-aperta{overflow:hidden;}
   .lancio-guida.senza .lg-verdict, .lancio-guida.senza .lg-gauge, .lancio-guida.senza .lg-axis, .lancio-guida.senza .lg-info{display:none;}
   .lancio-guida.senza .lg-msg{display:block;padding:40px 0;}
 
-  .mp-modi{display:flex;flex-wrap:wrap;gap:6px;}
-  .mp-modi .tab{flex:1 1 22%;border:1px solid var(--line)!important;border-radius:8px!important;}
+  .mp-modi{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .mp-modi .tab{flex:0 0 auto;min-width:84px;border:1px solid var(--line)!important;border-radius:8px!important;}
   .mp-testo{width:100%;margin-bottom:8px;background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:11px;resize:vertical;}
 
   /* fascia di lancio su telefono in orizzontale: tempo a sinistra, fascia a destra */
@@ -481,3 +481,10 @@ body.mp-aperta{overflow:hidden;}
 .box-toast{position:fixed;left:12px;right:12px;bottom:18px;z-index:9999;padding:14px 16px;border-radius:12px;background:#222a31;color:#fff;border:1px solid #c98a1b;font-size:15px;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.5);}
 .box-toast[hidden]{display:none;}
 .box-ruolo .btn{min-height:52px;min-width:52px;font-size:14px;}
+
+.mp-cal-stato.rosso{color:#ff6b60;font-weight:700;}
+.mp-cal-stato.verde{color:#4cd964;font-weight:700;}
+.mp-cal-male{color:#ffb020;}
+.mp-cal-riga{justify-content:space-between;}
+.mp-cal-riga .btn{flex:0 0 auto;min-width:72px;}
+.mp-cal-riga .mono{font-size:12px;flex:1 1 150px;}

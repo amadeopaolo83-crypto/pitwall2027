@@ -21,7 +21,7 @@ const GPS_USCITA_EXTRA = 5;    // metri in piu' per uscire da una zona in cui si
 const GPS_FERMO_M = 6;         // metri: entro tanto dal punto di sosta si considera fermo
 const GPS_PASSO_REG_M = 3;     // registrazione corsia: un punto ogni tanti metri
 
-let gpsCfg = { on: false, box: null, refuel: null, refuelPoly: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 60, traguardo: null, giroRif: null, lancioS: 240 };
+let gpsCfg = { on: false, box: null, refuel: null, refuelPoly: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 60, traguardo: null, giroRif: null, lancioS: 240, tracciato: null, limiteKmh: 60, allineamento: null };
 let gpsUltima = null;          // ultimo punto ricevuto { lat, lng, acc, t }
 let gpsUltimaBuona = 0;        // quando e' arrivato l'ultimo punto preciso
 let gpsStato = null;           // 'pista' | 'box' | 'rifornimento' (confermato)
@@ -51,7 +51,7 @@ function gpsDistanza(a, b){
 // Il box si tiene una copia delle zone: se il server riparte a meta' gara (Render) gliele rimanda.
 function gpsSalvaCopia(){
   if(role !== 'box') return;
-  const vuota = !gpsCfg.box && !gpsCfg.refuel && !gpsCfg.refuelPoly && !gpsCfg.corsia && !gpsCfg.traguardo && !gpsCfg.giroRif;
+  const vuota = !gpsCfg.box && !gpsCfg.refuel && !gpsCfg.refuelPoly && !gpsCfg.corsia && !gpsCfg.traguardo && !gpsCfg.giroRif && !gpsCfg.tracciato;
   save('pc_gps_cfg', { code, cfg: vuota ? null : gpsCfg });
 }
 
