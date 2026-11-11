@@ -41,6 +41,8 @@ srv.listen(8773, async () => {
     out.notifNascosta = window.__notif.length; Object.defineProperty(document, 'hidden', { value: false, configurable: true });
     // 3) si muove di 20 m (oltre il raggio di 10 m piu' il rumore): la domanda sparisce e si ricomincia
     pos(45.00055 + 0.00018, 9);             out.mossa = [gpsChiede, $('gpsDomanda').hidden];
+    out.testoRipartita = $('gpsDomandaTesto').textContent;
+    gpsChiedeRipartita = Date.now() - 181000; pos(45.00055 + 0.00036, 9); out.scaduta = [gpsChiede, $('gpsDomanda').hidden];   // dopo 180 s dalla ripartenza si chiude da sola
     // 4) fermo ma fuori dalla corsia (23 m di lato): niente domanda
     passo(45.0003, 9.0003, 80, 5);         out.fuoriCorsia = [gpsChiede, gpsInCorsia];
     // 5) fermo in corsia ma senza segnale buono (80 m di errore): niente
@@ -66,7 +68,8 @@ srv.listen(8773, async () => {
   V.ok('dopo 65 s fermo: domanda visibile', R.dopo65s[0] === true && R.dopo65s[1] === true && /cambio pilota/.test(R.dopo65s[3]), R.dopo65s);
   V.ok('pagina in primo piano: nessuna notifica nativa', R.notifApp === 0);
   V.ok('pagina nascosta: notifica nativa', R.notifNascosta === 1);
-  V.ok('si muove: la domanda sparisce', J(R.mossa) === '[false,true]', R.mossa);
+  V.ok('l\'auto riparte con la domanda aperta: resta aperta (e lo dice)', J(R.mossa) === '[true,false]' && /ripartita/.test(R.testoRipartita), [R.mossa, R.testoRipartita]);
+  V.ok('...e si chiude da sola dopo 180 s dalla ripartenza', J(R.scaduta) === '[false,true]', R.scaduta);
   V.ok('fuori corsia: niente domanda', R.fuoriCorsia[0] === false && R.fuoriCorsia[1] === false, R.fuoriCorsia);
   V.ok('punti imprecisi: niente domanda', R.puntiImprecisi === false);
   V.ok('domanda e risposta: un cambio', R.richiesta === true && R.cambi === 1, [R.richiesta, R.cambi]);

@@ -35,6 +35,9 @@ let gpsWatch = null;           // auto: invio della posizione
 let gpsInvioUltimo = 0;
 let gpsCambio = load('pc_gps_cambio', { n: 0, da: null }); // cambi pilota registrati e inizio turno
 let gpsCambioFatto = false;    // alla domanda di questa sosta si e' gia' risposto
+let gpsChiedeRipartita = 0;    // quando l'auto e' ripartita con la domanda ancora aperta (0 = no); resta aperta GPS_DOMANDA_APERTA_S
+let gpsChiedeDurata = 0;       // quanto e' rimasta ferma, in secondi
+const GPS_DOMANDA_APERTA_S = 180;
 let gpsChiede = false;         // la domanda "era un cambio pilota?" e' sul box
 let gpsAncora = null, gpsAncoraDa = 0; // dove e da quando l'auto e' ferma
 let gpsScia = [];              // ultimi punti dell'auto (per la scia sulla mappa)
@@ -97,7 +100,7 @@ function gpsApplicaConfig(c, nonSalvare){
   gpsCfg = { ...gpsCfg, ...c };
   if(!nonSalvare) gpsSalvaCopia();
   if(typeof mappaConfigCambiata === 'function') mappaConfigCambiata();
-  if(!gpsCfg.on){ gpsStato = null; gpsCandidato = null; gpsCambioFatto = false; gpsChiede = false; gpsAncora = null; gpsScia = []; }
+  if(!gpsCfg.on){ gpsStato = null; gpsCandidato = null; gpsCambioFatto = false; gpsChiede = false; gpsChiedeRipartita = 0; gpsAncora = null; gpsScia = []; }
   if(role === 'auto') gpsAggiornaInvio();
   gpsRender();
 }
@@ -483,11 +486,21 @@ function gpsCorsiaPos(p){
 function gpsAggiornaFermo(p, zona){
   const ora = Date.now();
   const raggio = Math.max(GPS_FERMO_M, 2 * (p.acc || 0));
+  // La domanda resta aperta dopo la ripartenza (per GPS_DOMANDA_APERTA_S secondi) finche' non si risponde:
+  // con una sosta lunga poco piu' della soglia comparirebbe per pochi secondi e sfuggirebbe.
+  if(gpsChiede && gpsChiedeRipartita && ora - gpsChiedeRipartita > GPS_DOMANDA_APERTA_S * 1000){
+    gpsChiede = false; gpsCambioFatto = false; gpsChiedeRipartita = 0; gpsRender();
+  }
   if(!gpsAncora || gpsDistanza(p, gpsAncora) > raggio){
+    const eraAperta = gpsChiede, durata = gpsAncoraDa ? (ora - gpsAncoraDa) / 1000 : 0;
     gpsAncora = { lat: p.lat, lng: p.lng };
     gpsAncoraDa = ora;
-    gpsChiede = false;
-    gpsCambioFatto = false;
+    if(eraAperta){
+      if(!gpsChiedeRipartita){ gpsChiedeRipartita = ora; gpsChiedeDurata = durata; gpsRender(); }
+    } else {
+      gpsChiede = false;
+      gpsCambioFatto = false;
+    }
   }
   gpsInCorsia = gpsCfg.corsia ? (gpsDistCorsia(p) <= gpsCfg.larg || zona === 'box') : zona !== 'pista';
   gpsControllaFermo();
@@ -507,7 +520,7 @@ function gpsControllaFermo(){
 }
 
 function gpsRispostaCambio(si){
-  gpsChiede = false;
+  gpsChiede = false; gpsChiedeRipartita = 0;
   gpsCambioFatto = true; // una sola domanda per ogni sosta
   if(si) gpsRegistraCambio();
   // lo sa anche l'altro box: la domanda si chiude su tutti (risponde chi e' piu' vicino)
@@ -527,7 +540,7 @@ function gpsDomandaRemota(d){
 
 // L'altro box ha risposto: la domanda sparisce anche qui e, se era un cambio, si aggiorna il turno.
 function gpsRispostaRemota(d){
-  gpsChiede = false; gpsCambioFatto = true;
+  gpsChiede = false; gpsChiedeRipartita = 0; gpsCambioFatto = true;
   if(d && d.si && d.cambioPilota && d.cambioPilota.da){ gpsCambio = { n: d.cambioPilota.n, da: d.cambioPilota.da }; save('pc_gps_cambio', gpsCambio); }
   gpsRender();
 }
@@ -586,7 +599,9 @@ function gpsRender(){
   const dom = $('gpsDomanda');
   if(dom){
     dom.hidden = !(gpsCfg.on && gpsChiede);
-    if(!dom.hidden && $('gpsDomandaTesto')) $('gpsDomandaTesto').textContent = 'Auto ferma da ' + gpsMinSec(Date.now() - gpsAncoraDa) + ' in corsia box: era un cambio pilota?';
+    if(!dom.hidden && $('gpsDomandaTesto')) $('gpsDomandaTesto').textContent = gpsChiedeRipartita
+      ? 'L\u2019auto e\u2019 ripartita dopo ' + gpsMinSec(gpsChiedeDurata * 1000) + ' ferma in corsia box: era un cambio pilota?'
+      : 'Auto ferma da ' + gpsMinSec(Date.now() - gpsAncoraDa) + ' in corsia box: era un cambio pilota?';
   }
   const riga = $('gpsRiga');
   if(riga){ riga.textContent = gpsRiga(); riga.hidden = !gpsCfg.on; }

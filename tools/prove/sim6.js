@@ -21,7 +21,7 @@ srv.listen(8777, async () => {
     localStorage.removeItem('pc_gps_applica');           // di norma: applica gia' acceso
     gpsApplicaConfig(Object.assign({}, gps, { on: true, fermoS: 60 }), true);
     const pista = Pista.costruisci(gps), opz = Pista.calibra(pista, 100);
-    const corsa = Pista.pianifica(pista, [{ giri: 1 }, { giri: 1, pit: { dove: 'rifornimento', sostaS: 30 } }, { giri: 1, pit: { dove: 'corsia', sostaS: 75 } }, { giri: 1, pit: { dove: 'box', sostaS: 90 } }, { giri: 1, pit: { dove: 'rifornimento', sostaS: 1 } }, { giri: 1 }], opz);
+    const corsa = Pista.pianifica(pista, [{ giri: 1 }, { giri: 1, pit: { dove: 'rifornimento', sostaS: 30 } }, { giri: 1, pit: { dove: 'corsia', sostaS: 70 } }, { giri: 1, pit: { dove: 'box', sostaS: 90 } }, { giri: 1, pit: { dove: 'rifornimento', sostaS: 1 } }, { giri: 1 }], opz);
     const g = Pista.rumore(corsa, { seme: 9 });
     const T0 = 1.7e12, serie = [];
     for (let t = 0; t < corsa.durata + 25; t += 1) {
@@ -47,7 +47,8 @@ srv.listen(8777, async () => {
   V.ok('dopo il box torna "in pista"', stato(box.fine + 8).stato === 'pista', [stato(box.fine + 8)]);
   V.ok('sosta di 1 s: non diventa "rifornimento"', S.filter((x) => x.t >= breve.t - 5 && x.t <= breve.fine + 8).every((x) => x.stato === 'pista'));
   const inCorsia = S.filter((x) => x.t >= cors.t + 5 && x.t <= cors.fine - 2);
-  V.ok('fermo 75 s in corsia fuori dalle zone: resta "in pista"', inCorsia.every((x) => x.stato === 'pista'), inCorsia.map((x) => x.stato).slice(0, 3));
+  V.ok('fermo 70 s in corsia fuori dalle zone: resta "in pista"', inCorsia.every((x) => x.stato === 'pista'), inCorsia.map((x) => x.stato).slice(0, 3));
   V.ok('...e dopo 60 s compare la domanda "era un cambio pilota?"', stato(cors.t + 68).chiede === true && stato(cors.t + 40).chiede === false, [stato(cors.t + 40).chiede, stato(cors.t + 68).chiede]);
+  V.ok('sosta di 70 s (poco oltre la soglia): la domanda resta aperta anche dopo la ripartenza', stato(cors.fine + 8).chiede === true && stato(cors.fine + 20).chiede === true, [stato(cors.fine + 8).chiede, stato(cors.fine + 20).chiede]);
   V.fine(); await b.close(); srv.close();
 });
