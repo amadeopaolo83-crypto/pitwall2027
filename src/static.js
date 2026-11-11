@@ -9,6 +9,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const simponte = require("./simponte");
 
 const { VAPID_PUBLIC_KEY } = require("./config");
 const { fotoFinale } = require("./rooms");
@@ -49,6 +50,7 @@ function fileRichiesto(url) {
 }
 
 function serviRichiesta(req, res) {
+  if ((req.url || "").startsWith("/sim/ponte/") && simponte.gestisci(req, res)) return;
   if (req.url === "/vapid-public-key") {
     // Senza chiavi configurate le notifiche sono spente: il client lo capisce
     // dal 404 e lo scrive nello stato, invece di provare a iscriversi.

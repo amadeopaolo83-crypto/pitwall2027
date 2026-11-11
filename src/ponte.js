@@ -20,6 +20,16 @@
 const { getRoomState } = require("./rooms");
 const passo = require("./passo");
 const { BRIDGE_URL, BRIDGE_TOKEN } = require("./config");
+const simponte = require("./simponte");
+
+// Indirizzo del finto ponte del simulatore (solo con SIM_PONTE=1): si risponde qui dentro, senza rete.
+function nomeSimulato(evento) {
+  if (!simponte.attivo()) return null;
+  try {
+    const u = new URL(evento);
+    return u.hostname === simponte.HOST ? decodeURIComponent(u.pathname.replace(/^\/+/, "")) : null;
+  } catch (e) { return null; }
+}
 
 const OGNI_MS = 2500;
 const ATTESA_NON_PUBBLICATO_MS = 20000;
@@ -194,6 +204,8 @@ function computeTiming(sessione, piloti, numero) {
 // ---------- rete ----------
 
 async function chiediAlPonte(link) {
+  const simulato = nomeSimulato(link.evento);
+  if (simulato !== null) return simponte.classifica(simulato);
   const indirizzo = `${BRIDGE_URL}/api/classifica?evento=${encodeURIComponent(link.evento)}`;
   const res = await fetch(indirizzo, {
     signal: AbortSignal.any([
@@ -317,8 +329,8 @@ function validaEvento(testo) {
 
 /** Avvia la lettura per questo team. Ritorna { ok } oppure { ok:false, error }. */
 function start(code, eventoTesto, numeroTesto) {
-  if (!BRIDGE_URL) return { ok: false, error: "il ponte non e' configurato sul server (variabile BRIDGE_URL)" };
   const evento = validaEvento(eventoTesto);
+  if (!BRIDGE_URL && !(evento && nomeSimulato(evento) !== null)) return { ok: false, error: "il ponte non e' configurato sul server (variabile BRIDGE_URL)" };
   if (!evento) return { ok: false, error: "indirizzo non valido: incolla quello della pagina dell'evento" };
   const numero = String(numeroTesto == null ? "" : numeroTesto).trim();
   if (!/^[A-Za-z0-9]{1,6}$/.test(numero)) return { ok: false, error: "numero di gara non valido" };

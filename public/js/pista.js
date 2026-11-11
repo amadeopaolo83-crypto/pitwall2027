@@ -103,13 +103,30 @@
   //   giri = quanti giri completi di pista prima del pit (puo' essere 0 e frazioni non servono: si finisce all'ingresso)
   //   senza `pit` l'ultimo tratto e' solo "giri" giri e si ferma li' (si continua a girare, poi basta)
   function pianifica(pista, piano, opz) {
-    const o = Object.assign({ vMax: 55, aLat: 9, aAcc: 5.5, aFren: 11, vPartenza: 30, offset: null }, opz || {});
+    const o = Object.assign({ vMax: 55, aLat: 9, aAcc: 5.5, aFren: 11, vPartenza: 30, offset: null, rallentamenti: [], pause: [] }, opz || {});
+    // rallentamenti: [{ daGiro, giri, fattore }] (safety car: velocita' x fattore tra daGiro e daGiro+giri, in giri completati)
+    // pause: [{ giro, durataS }] (bandiera rossa: ferma sul traguardo dopo "giro" giri completati)
+    let prog = 0;   // giri completati (frazionario)
     const nodi = []; // { x, y, tetto, sosta?, evento? }
     const verita = [];   // costruita dopo, con i tempi
     const pushT = (p, tetto, extra) => nodi.push(Object.assign({ x: p.x, y: p.y, tetto }, extra || {}));
     let i = pista.inizio;
     const T = pista.T, n = pista.n;
-    const aggiungiPista = (da, nodiAvanti) => { for (let k = 0; k < nodiAvanti; k++) pushT(T[(da + k) % n], o.vMax); return (da + nodiAvanti) % n; };
+    const fattoreA = (g) => { for (const r of o.rallentamenti) if (g >= r.daGiro - 1e-9 && g < r.daGiro + r.giri - 1e-9) return r.fattore; return 1; };
+    const aggiungiPista = (da, nodiAvanti) => {
+      for (let k = 0; k < nodiAvanti; k++) {
+        const idx = (da + k) % n, extra = {};
+        const f = fattoreA(prog);
+        if (f !== 1) { extra.rallenta = true; extra.fattoreR = f; }
+        if (idx === pista.inizio && prog > 0.5 && Math.abs(prog - Math.round(prog)) < 1e-6) {
+          const ps = o.pause.find((q) => q.giro === Math.round(prog));
+          if (ps) { extra.sosta = ps.durataS; extra.dove = 'pausa'; }
+        }
+        pushT(T[idx], o.vMax * f, extra);
+        prog += 1 / n;
+      }
+      return (da + nodiAvanti) % n;
+    };
 
     (piano || []).forEach((st) => {
       const avanti = (idx) => ((idx - i) % n + n) % n;
@@ -117,6 +134,7 @@
         // fino all'ingresso della corsia (dopo "giri" giri completi)
         const tratto = (st.giri || 0) * n + avanti(pista.ingresso);
         i = aggiungiPista(i, tratto);
+        const progIngresso = prog;
         pushT(T[pista.ingresso], o.vMax, { evento: 'ingressoCorsia' });
         // raccordo pista -> inizio corsia (retta), poi la corsia
         const c0 = pista.corsia[0];
@@ -144,6 +162,7 @@
         const rac2 = ricampiona([cF, T[pista.uscita]], 2);
         rac2.slice(1, -1).forEach((p) => pushT(p, pista.limiteMs * 1.4));
         pushT(T[pista.uscita], o.vMax, { evento: 'uscitaCorsia' });
+        prog = progIngresso + (((pista.uscita + 1 - pista.ingresso) % n + n) % n) / n;
         i = (pista.uscita + 1) % n;
       } else {
         i = aggiungiPista(i, Math.max(1, Math.round((st.giri || 1) * n)));
@@ -186,6 +205,37 @@
     });
     verita.sort((a, b) => a.t - b.t);
 
+    // passaggi sulla linea del traguardo (anche in corsia): tempi di gara in secondi
+    const passaggi = [];
+    if (Array.isArray(pista.gps.traguardo) && pista.gps.traguardo.length === 2) {
+      const a0 = pista.pr.xy(pista.gps.traguardo[0]), a1 = pista.pr.xy(pista.gps.traguardo[1]);
+      const lx = a1.x - a0.x, ly = a1.y - a0.y, ll = Math.hypot(lx, ly) || 1;
+      const ux = lx / ll, uy = ly / ll, est = 40;
+      const A = { x: a0.x - ux * est, y: a0.y - uy * est }, B = { x: a1.x + ux * est, y: a1.y + uy * est };
+      const nx = -uy, ny = ux;                                         // normale alla linea
+      const dirT = { x: T[(pista.inizio + 1) % n].x - T[(pista.inizio - 1 + n) % n].x, y: T[(pista.inizio + 1) % n].y - T[(pista.inizio - 1 + n) % n].y };
+      const segno = Math.sign(dirT.x * nx + dirT.y * ny) || 1;
+      for (let k = 1; k < N; k++) {
+        const P = nodi[k - 1], Q = nodi[k];
+        const dP = (P.x - A.x) * nx + (P.y - A.y) * ny, dQ = (Q.x - A.x) * nx + (Q.y - A.y) * ny;
+        if (!(dP * segno < 0 && dQ * segno >= 0)) continue;           // attraversa nel verso di marcia
+        const f = dQ === dP ? 0 : -dP / (dQ - dP);
+        const X = P.x + (Q.x - P.x) * f, Y = P.y + (Q.y - P.y) * f;
+        const lungo = (X - A.x) * ux + (Y - A.y) * uy;
+        if (lungo < 0 || lungo > ll + 2 * est) continue;             // fuori dalla linea
+        const t = partenza[k - 1] + (tempo[k] - partenza[k - 1]) * f;
+        if (!passaggi.length || t - passaggi[passaggi.length - 1] > 30) passaggi.push(t);
+      }
+    }
+    // finestre di safety car e pause in tempo di gara
+    const finestre = [];
+    (o.rallentamenti || []).forEach((r) => {
+      let da = null, a = null;
+      nodi.forEach((q, k) => { if (q.rallenta && q.fattoreR === r.fattore) { if (da == null) da = tempo[k]; a = tempo[k]; } });
+      if (da != null) finestre.push({ da, a, fattore: r.fattore });
+    });
+    const pauseT = verita.filter((e) => e.tipo === 'sosta' && e.dove === 'pausa').map((e) => ({ da: e.t, durata: e.durataS }));
+
     const off = o.offset || { dx: 0, dy: 0 };
     // posizione vera all'istante t (secondi dalla partenza)
     function vero(t) {
@@ -205,7 +255,7 @@
       const p = { x: a.x + (b.x - a.x) * f + off.dx, y: a.y + (b.y - a.y) * f + off.dy };
       return Object.assign(pista.pr.ll(p), { v: Math.max(0, v[k] + acc * tau), rotta: Math.atan2(b.x - a.x, b.y - a.y), k });
     }
-    return { pista, nodi, v, tempo, partenza, durata, verita, vero, lunghezza: S[N - 1] };
+    return { pista, nodi, v, tempo, partenza, durata, verita, vero, lunghezza: S[N - 1], passaggi, finestre, pauseT };
   }
 
   // ---------- il telefono: errore del GPS ----------

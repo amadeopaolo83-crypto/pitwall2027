@@ -36,9 +36,16 @@ Le schermate vanno nella cartella temporanea (`pitcomm-prove`) o in `PROVE_OUT`.
 - `sim3.js`: pagina `sim.html` (auto simulata): entra come auto, manda `gpsPos` ogni secondo, rispetta lo scenario, si ferma.
 
 - `sim4.js`: come `sim2` sul circuito di Varano com'e' disegnato (box e rifornimento staccati dalla corsia).
+- `sim5.js`: finto ponte (`src/simponte.js`, solo con `SIM_PONTE=1`): classifica, safety car, pause, HTTP, collegamento con `ponte.js`.
 
 ## Simulatore sul PC (senza telefono)
 1. Apri `/sim.html` del sito (o `tools/sim/circuito-esempio.json` come circuito) in una scheda; in un'altra il box con lo stesso codice squadra.
 2. Nel box: Mappa → Circuito → carica lo stesso file, GPS acceso.
 3. Nel simulatore: scenario (`attesa secondi` = lancio con l'auto ferma, poi un turno per riga: `giri [rifornimento|box secondi]`), giro in secondi (tarato sul circuito), Avvia. Va a tempo reale (x1); ⏭ Salta porta 60 s prima del prossimo pit.
 Provato solo con finti socket: il giro completo con il server vero va ancora fatto.
+
+### Timing finto (SIM_PONTE=1)
+Su Render (Pitwall2027, solo la copia di prova) aggiungi la variabile `SIM_PONTE=1`. Nel simulatore lascia "timing finto" acceso: al via manda
+la corsa al server. Nel box: Distacchi → Nostro → indirizzo `https://pitcomm.sim/CODICE-SQUADRA` e numero 77 (o quello messo nel simulatore).
+Scenario: `sc dal-giro quanti-giri [velocita'%]` = safety car (tutti rallentano, anche la nostra auto), `pausa dopo-giri secondi` = bandiera rossa (tutti fermi sul traguardo).
+Gli altri sono piloti virtuali: stesso formato del ponte vero, solo tempi.

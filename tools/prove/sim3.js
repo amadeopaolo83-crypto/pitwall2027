@@ -10,6 +10,7 @@ srv.listen(8775, async () => {
   const stub = `window.__em=[];window.io=()=>{const h={};const s={connected:true,on(n,f){h[n]=f;if(n==='connect')setTimeout(f,0)},off(){},disconnect(){s.connected=false},
     emit(...a){window.__em.push(a);const ack=a[a.length-1];if(a[0]==='join'&&typeof ack==='function')ack({ok:true,state:{gps:{on:true}}})}};return s};`;
   await pg.route('**/socket.io/socket.io.js', (r) => r.fulfill({ contentType: 'text/javascript', body: stub }));
+  await pg.addInitScript(() => { window.__fetch = []; const orig = window.fetch; window.fetch = (u, o) => { try { window.__fetch.push({ url: String(u), corpo: o && o.body ? JSON.parse(o.body) : null }); } catch (e) {} return Promise.resolve({ json: () => Promise.resolve({ ok: true, auto: 14 }) }); }; });
   await pg.clock.install({ time: 1.7e12 });
   await pg.goto('http://localhost:8775/sim.html');
   await pg.click('#esempio');
@@ -45,9 +46,13 @@ srv.listen(8775, async () => {
   await pg.click('#salta'); await pg.clock.runFor(2000);
   const lg2 = await pg.textContent('#log');
   V.ok('secondo "Salta": va 60 s prima del prossimo pit', /salto al prossimo pit/.test(lg2), lg2.slice(-200));
-  await pg.fill('#giro', '100'); await pg.fill('#piano', 'attesa 300\n5 rifornimento 30\n5 box 90\n5 rifornimento 30\n3'); await pg.click('#via');
+  await pg.fill('#giro', '100'); await pg.fill('#piano', 'attesa 300\n5 rifornimento 30\n5 box 90\n5 rifornimento 30\n2\nsc 12 2 55\npausa 9 120'); await pg.click('#via');
   const l0 = await pg.textContent('#log');
   V.ok('esempio a 100 s/giro: lancio 5:00 e gara di circa 40 min', /lancio 5:00 \+ gara (3\d|4\d):\d\d/.test(l0), l0);
+  await pg.waitForTimeout(300);
+  const chiamate = await pg.evaluate(() => (window.__fetch || []));
+  V.ok('con "timing finto" la pagina manda la corsa al server (avvia) con passaggi e finestre', chiamate.some((c) => /\/sim\/ponte\/avvia/.test(c.url) && c.corpo.passaggi.length >= 15 && c.corpo.finestre.length === 1 && c.corpo.pause.length === 1 && c.corpo.giroS === 100), chiamate.map((c) => c.url));
+  V.ok('il registro dice dove incollare l\'indirizzo nel box', /pitcomm\.sim\/PROVA/.test(await pg.textContent('#log')), await pg.textContent('#log'));
   await pg.fill('#piano', '1 volo 10'); await pg.click('#via');
   V.ok('scenario sbagliato: messaggio chiaro, niente collegamento', /rifornimento o box/.test(await pg.textContent('#stato')), await pg.textContent('#stato'));
   V.ok('nessun errore nella pagina', errs.length === 0, errs);
