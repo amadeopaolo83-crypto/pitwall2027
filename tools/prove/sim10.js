@@ -24,11 +24,21 @@ srv.listen(8783, async () => {
     const B = { dopo: [] }; let visto = null;
     for (let t = 1; t <= corsa.durata; t++) { const q = rum2(t); if (!q) continue; lancioPunto({ lat: q.lat, lng: q.lng, acc: q.acc, v: q.v, t: T0 + 5e6 + t * 1000 }); if (laLocale !== visto) { visto = laLocale; B.dopo.push([t, laLocale && laLocale.t]); } }
     B.passaggi = corsa.passaggi.map((x) => Math.round(x));
+    // C: la corsia attaccata alla pista (stessa linea), ma si corre a velocita' di pista: il giro resta pulito
+    laLocale = null; laGiro = null; laPrec = null; laCroc = null; laVerso = 0;
+    const gv = Pista.guida(pista, opz, { dx: 0, dy: 0 }); const rett = [];
+    for (let k = 1; k <= 100; k++) { gv.passo(1, 1); const w = gv.stato(); if (w.v > 28) rett.push({ lat: w.lat, lng: w.lng }); }
+    B.rettilineoS = rett.length;           // secondi sopra i 100 km/h in un giro: li' la corsia e' "parallela"
+    gpsApplicaConfig({ corsia: rett.filter((x, i) => i % 3 === 0 || i === rett.length - 1) }, true);
+    const g3 = Pista.guida(pista, opz, { dx: 0, dy: 0 }), rum3 = Pista.rumorePunto(pista, { seme: 3 });
+    for (let s = 1; s <= 250; s++) { g3.passo(1, 1); const q = rum3(g3.stato(), s); if (!q) continue; lancioPunto({ lat: q.lat, lng: q.lng, acc: q.acc, v: q.v, t: T0 + 9e6 + s * 1000 }); }
+    B.veloce = laLocale ? laLocale.t : null;
     return { A, B };
   }, gps);
   V.ok('lancio su Varano: il giro di riferimento si forma al secondo passaggio (' + (r.A.rif[0] || '-') + ' s, giro ' + r.A.t + ' s)', r.A.rif.length === 1 && r.A.rif[0] < 230 && Math.abs(r.A.t - 100) < 3, r.A);
   const primoPit = r.B.passaggi[0];
   V.ok('un giro con sosta in corsia non diventa riferimento: i riferimenti nascono dopo i giri puliti', r.B.dopo.filter((x) => x[1] != null).every((x) => x[0] > primoPit + 100) && r.B.dopo.some((x) => x[1] != null), r.B);
+  V.ok('corsia attaccata alla pista ma si corre a velocita\' di pista (>100 km/h): il giro resta valido', r.B.veloce != null, r.B);
   V.ok('nessun errore nella pagina', errs.length === 0, errs);
   await b.close(); srv.close(); V.fine();
 });

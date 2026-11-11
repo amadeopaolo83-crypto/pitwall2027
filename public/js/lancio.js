@@ -24,7 +24,7 @@ const LA_FONDO_SCALA_S = 10;     // la fascia piena vale +-10 s
 const LA_GIRO_MIN_S = 20, LA_GIRO_MAX_S = 1200;
 const LA_ACC_GIRO_M = 15;        // nel giro di riferimento entrano solo punti piu' precisi di cosi'
 const LA_BUCO_MAX_S = 6;         // tra due punti buoni: oltre, il giro non vale come riferimento
-const LA_CORSIA_MAX_S = 8;       // in corsia (entro 'larg' m) oltre questo tempo: giro non pulito (gli innesti ingresso/uscita no)
+const LA_CORSIA_MAX_S = 8;       // vicino alla corsia E piano (<= 1,3 x limite) oltre questo tempo: giro non pulito (ingresso/uscita e passaggi veloci no)
 const LA_FERMO_MAX_S = 6;        // fermo (v < 2 m/s) piu' di cosi': giro non pulito
 const LA_FINESTRA_RITMO_S = 30;  // sugli ultimi secondi si misura il ritmo
 const LA_FUORI_M = 60;           // piu' lontano di cosi' dal giro di riferimento: fuori traiettoria
@@ -137,11 +137,14 @@ function laAggiungi(p){
   } else laGiro.fermoS = 0;
   // box, rifornimento o corsia: la sosta ai box non e' un giro di riferimento
   if(laInZonaBox(p)) laGiro.pulito = false;
-  // La corsia si innesta sulla pista: all'ingresso e all'uscita anche chi corre in pista le passa a pochi metri.
-  // Il giro e' sporco solo se in corsia ci si resta (piu' di LA_CORSIA_MAX_S secondi), cioe' se si e' entrati ai box.
+  // La corsia si innesta sulla pista e le corre parallela: anche chi e' in pista le passa vicino.
+  // Conta come "in corsia" solo chi e' vicino E va piano (al limite della corsia, non a velocita' di pista) per piu' di LA_CORSIA_MAX_S secondi.
   if(gpsCfg.corsia && gpsDistCorsia(p) <= gpsCfg.larg){
-    laGiro.corsiaS = (laGiro.corsiaS || 0) + (s - laGiro.ultimoS);
-    if(laGiro.corsiaS > LA_CORSIA_MAX_S) laGiro.pulito = false;
+    const lento = !Number.isFinite(p.v) || p.v <= 1.3 * (gpsCfg.limiteKmh || 60) / 3.6;
+    if(lento){
+      laGiro.corsiaS = (laGiro.corsiaS || 0) + (s - laGiro.ultimoS);
+      if(laGiro.corsiaS > LA_CORSIA_MAX_S) laGiro.pulito = false;
+    }
   }
   laGiro.pts.push([Math.round(p.lat * 1e6) / 1e6, Math.round(p.lng * 1e6) / 1e6, Math.round(s * 100) / 100]);
   laGiro.ultimoS = s;
