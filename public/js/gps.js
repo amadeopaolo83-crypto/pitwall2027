@@ -621,7 +621,7 @@ function gpsTurnoTesto(){
   const max = gpsStintMax();
   if(!gpsCambio.da) return 'Turno pilota: non ancora iniziato (parte quando l\u2019auto esce in pista)' + (max ? ' \u00b7 stint massimo ' + max + ' min' : '');
   const ms = gpsCambio.pistaMs || 0;
-  let t = 'Turno pilota ' + (gpsCambio.n ? ' ' + (gpsCambio.n + 1) : '') + ': ' + gpsMinSec(ms) + ' in pista' + (fuelSystem && fuelSystem.onTrack ? '' : ' (fermo: ai box)');
+  let t = 'Turno pilota' + (gpsCambio.n ? ' ' + (gpsCambio.n + 1) : '') + ': ' + gpsMinSec(ms) + ' in pista' + (fuelSystem && fuelSystem.onTrack ? '' : ' (fermo: ai box)');
   if(max) t += ' \u00b7 massimo ' + max + ' min \u00b7 ' + (ms >= max * 60000 ? 'SUPERATO di ' + gpsMinSec(ms - max * 60000) : 'restano ' + gpsMinSec(max * 60000 - ms));
   return t;
 }
