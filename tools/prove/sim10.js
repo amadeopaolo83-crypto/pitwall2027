@@ -48,6 +48,25 @@ srv.listen(8783, async () => {
   const primoPit = r.B.passaggi[0];
   V.ok('un giro con sosta in corsia non diventa riferimento: i riferimenti nascono dopo i giri puliti', r.B.dopo.filter((x) => x[1] != null).every((x) => x[0] > primoPit + 100) && r.B.dopo.some((x) => x[1] != null), r.B);
   V.ok('corsia attaccata alla pista ma si corre a velocita\' di pista (>100 km/h): il giro resta valido', r.B.veloce != null, r.B);
+  // D: circuito del simulatore (varano-sim.json): box e rifornimento portati sulla corsia, a pochi metri dal rettilineo.
+  // Passare accanto ai box a velocita' di pista non sporca il giro; una sosta ai box si'.
+  const gpsSim = JSON.parse(fs.readFileSync(path.join(C.ROOT, '..', 'tools/sim/varano-sim.json'), 'utf8')).gps;
+  const d = await pg.evaluate((gps) => {
+    gpsApplicaConfig(Object.assign({ refuel: null, refuelPoly: null, box: null, corsia: null }, gps, { giroRif: null, on: true }), true);
+    const pista = Pista.costruisci(gps), opz = Pista.calibra(pista, 100), T0 = 1.75e12;
+    const vicino = Math.min(...Array.from({ length: 400 }, (_, i) => { const w = pista.pr.ll(pista.T[Math.floor(i * pista.T.length / 400)]); return gpsDistanza(w, gps.box); }));
+    laLocale = null; laGiro = null; laPrec = null; laCroc = null; laVerso = 0; laPitSt = { ep: null };
+    const g = Pista.guida(pista, opz, { dx: 0, dy: 0 }), rum = Pista.rumorePunto(pista, { seme: 1 }); const rif = [];
+    for (let s = 1; s <= 330; s++) { g.passo(1, 1); const q = rum(g.stato(), s); if (!q) continue; lancioPunto({ lat: q.lat, lng: q.lng, acc: q.acc, v: q.v, t: T0 + s * 1000 }); if (laLocale && !rif.length) rif.push(s); }
+    laLocale = null; laGiro = null; laPrec = null; laCroc = null; laVerso = 0; laPitSt = { ep: null };
+    const corsa = Pista.pianifica(pista, [{ giri: 1, pit: { dove: 'box', sostaS: 30 } }, { giri: 3 }], opz), rum2 = Pista.rumore(corsa, { seme: 2 });
+    const dopo = []; let visto = null;
+    for (let t = 1; t <= corsa.durata; t++) { const q = rum2(t); if (!q) continue; lancioPunto({ lat: q.lat, lng: q.lng, acc: q.acc, v: q.v, t: T0 + 5e6 + t * 1000 }); if (laLocale !== visto) { visto = laLocale; dopo.push([t, laLocale && laLocale.t]); } }
+    return { vicino: Math.round(vicino), rif, t: rif.length ? laLocale && laLocale.t : null, dopo, passaggi: corsa.passaggi.map(Math.round) };
+  }, gpsSim);
+  V.ok('circuito del simulatore: la zona box e\' a ' + d.vicino + ' m dal tracciato (meno di raggio + 5 m)', d.vicino < gpsSim.rBox + 5, d.vicino);
+  V.ok('box accanto al rettilineo, a velocita\' di pista: il giro di riferimento si forma', d.rif.length === 1 && d.rif[0] < 230, d);
+  V.ok('box accanto al rettilineo: il giro con la sosta ai box non diventa riferimento', d.dopo.filter((x) => x[1] != null).every((x) => x[0] > d.passaggi[0] + 100) && d.dopo.some((x) => x[1] != null), d);
   V.ok('nessun errore nella pagina', errs.length === 0, errs);
   await b.close(); srv.close(); V.fine();
 });

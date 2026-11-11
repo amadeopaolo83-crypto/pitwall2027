@@ -138,8 +138,10 @@ function laAggiungi(p){
     laGiro.fermoS += s - laGiro.ultimoS;
     if(laGiro.fermoS > LA_FERMO_MAX_S) laGiro.pulito = false;
   } else laGiro.fermoS = 0;
-  // box, rifornimento o corsia: la sosta ai box non e' un giro di riferimento
-  if(laInZonaBox(p)) laGiro.pulito = false;
+  // box o rifornimento: la sosta ai box non e' un giro di riferimento. Conta solo andando piano: i box possono stare
+  // a pochi metri dal rettilineo e passarci accanto a velocita' di pista non e' una sosta (senza velocita' si resta prudenti).
+  const pianoBox = !Number.isFinite(p.v) || p.v <= (gpsCfg.limiteKmh || 60) / 3.6 * 1.25;
+  if(pianoBox && laInZonaBox(p)) laGiro.pulito = false;
   laGiro.pts.push([Math.round(p.lat * 1e6) / 1e6, Math.round(p.lng * 1e6) / 1e6, Math.round(s * 100) / 100]);
   laGiro.ultimoS = s;
 }
