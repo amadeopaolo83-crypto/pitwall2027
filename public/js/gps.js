@@ -270,6 +270,7 @@ function gpsRicevi(p){
     if(boxPrimario) gpsCambiaStato(cand); else { gpsStato = cand; gpsStatoDa = ora; }
   }
   gpsAggiornaFermo(p, cand);
+  gpsPitAggiorna(p);
   gpsRender();
 }
 
@@ -290,6 +291,64 @@ function gpsAllineaOra(){
   gpsCandidato = z; gpsCandidatoDa = Date.now();
   gpsCambiaStato(z);
   if(!gpsApplica() && typeof setOnTrack === 'function') setOnTrack(z === 'pista');
+  gpsRender();
+}
+
+// ---------- passaggi in corsia box dalla velocita' (solo registro, non cambia gli stati) ----------
+// In corsia box si va al limite (gpsCfg.limiteKmh). Un'auto vicina alla corsia ma veloce e' in pista:
+// la corsia vale solo dopo qualche secondo a velocita' ridotta. All'uscita si classifica: passaggio
+// (non si e' fermata), rifornimento, cambio pilota probabile (fermo ai box da almeno fermoS) o sosta.
+const GPS_PIT_CONFERMA_S = 3;     // secondi a velocita' ridotta in corsia per confermare che e' corsia
+const GPS_PIT_USCITA_S = 4;       // secondi fuori corsia per chiudere il passaggio
+const GPS_PIT_FERMO_MS = 1;       // m/s: sotto e' fermo
+const GPS_PIT_MIN_SOSTA_S = 5;    // sosta minima per dirla tale
+let gpsPit = { ep: null };        // episodio in corso
+let gpsPitLog = load('pc_gps_pit', []);
+
+function gpsPitInCorsia(p){
+  if(gpsCfg.corsia && gpsCfg.corsia.length > 1) return gpsDistCorsia(p) <= gpsCfg.larg;
+  return gpsZonaDi(p) !== 'pista';
+}
+
+function gpsPitAggiorna(p){
+  if(!gpsCfg.on || !p) return;
+  const t = Number.isFinite(p.t) ? p.t : Date.now();
+  const v = Number.isFinite(p.v) ? p.v : (gpsVel != null ? gpsVel : null);
+  const lim = (gpsCfg.limiteKmh || 60) / 3.6;
+  const dentro = gpsPitInCorsia(p);
+  let e = gpsPit.ep;
+  if(dentro){
+    if(!e) e = gpsPit.ep = { ing: t, ult: t, lento: 0, conf: false, vmax: 0, fermoS: 0, maxFermoS: 0, dove: null, inFermo: null, fuori: null, zone: {} };
+    const dt = Math.max(0, Math.min(5, (t - e.ult) / 1000));
+    e.ult = t; e.fuori = null;
+    if(v != null){
+      if(v <= lim * 1.25) e.lento += dt;
+      if(e.conf || e.lento >= GPS_PIT_CONFERMA_S){ e.conf = true; e.vmax = Math.max(e.vmax, v); }
+      if(v <= GPS_PIT_FERMO_MS){
+        e.fermoS += dt; e.inFermo = (e.inFermo || 0) + dt;
+        const z = gpsZonaDi(p); e.zone[z] = (e.zone[z] || 0) + dt;
+        if(e.inFermo > e.maxFermoS){ e.maxFermoS = e.inFermo; e.dove = Object.keys(e.zone).sort((a, b) => e.zone[b] - e.zone[a])[0]; }
+      } else e.inFermo = null;
+    }
+  } else if(e){
+    if(e.fuori == null) e.fuori = t;
+    if((t - e.fuori) / 1000 >= GPS_PIT_USCITA_S) gpsPitChiudi(e);
+  }
+}
+
+function gpsPitChiudi(e){
+  gpsPit.ep = null;
+  if(!e.conf) return;                         // era solo un'auto veloce accanto alla corsia
+  const durata = Math.max(0, (e.ult - e.ing) / 1000);
+  let tipo = 'passaggio';
+  if(e.maxFermoS >= GPS_PIT_MIN_SOSTA_S){
+    if(e.dove === 'rifornimento') tipo = 'rifornimento';
+    else if(e.maxFermoS >= gpsCfg.fermoS) tipo = 'cambio?';
+    else tipo = 'sosta';
+  }
+  const r = { t: e.ing, corsiaS: Math.round(durata * 10) / 10, fermoS: Math.round(e.maxFermoS * 10) / 10, dove: e.dove, tipo, vmaxKmh: Math.round(e.vmax * 36) / 10 };
+  gpsPitLog.push(r); if(gpsPitLog.length > 40) gpsPitLog.shift();
+  save('pc_gps_pit', gpsPitLog);
   gpsRender();
 }
 
@@ -408,6 +467,8 @@ function gpsRiga(){
     t += gpsStato ? nomi[gpsStato] + ' da ' + gpsMinSec(ora - gpsStatoDa) : 'sto controllando…';
     if(gpsUltima.acc != null) t += ' · ±' + Math.round(gpsUltima.acc) + ' m';
   }
+  const up = gpsPitLog[gpsPitLog.length - 1];
+  if(up) t += ' · ultimo pit: ' + up.tipo + (up.fermoS >= GPS_PIT_MIN_SOSTA_S ? ' ' + Math.round(up.fermoS) + ' s fermo' : '') + ', corsia ' + Math.round(up.corsiaS) + ' s';
   if(gpsCambio.da) t += ' · turno pilota ' + gpsMinSec(ora - gpsCambio.da) + (gpsCambio.n ? ' (cambi: ' + gpsCambio.n + ')' : '');
   return t;
 }

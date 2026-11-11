@@ -13,7 +13,7 @@ const TUTTE = [
   // server vero (node src/server.js) con socket.io-client
   'doppio-vero',
   // pagina nel browser (Playwright), con finto socket
-  'orologio', 'pin', 'riavvio-client', 'doppio-client', 'xss', 'cambia', 'gps3', 'lancio1', 'mappa1', 'mappa2', 'mappa3', 'tocchi',
+  'orologio', 'pin', 'riavvio-client', 'doppio-client', 'xss', 'cambia', 'gps3', 'lancio1', 'mappa1', 'mappa2', 'mappa3', 'sim1', 'sim2', 'tocchi',
   // involucro Android: controlli sui sorgenti (la compilazione la fa android.yml)
   'apk',
   // vista auto identica a pitwallnew
