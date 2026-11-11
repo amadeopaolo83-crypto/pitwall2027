@@ -35,8 +35,10 @@ Le schermate vanno nella cartella temporanea (`pitcomm-prove`) o in `PROVE_OUT`.
 - `sim2.js`: il box riconosce dalla velocita' i passaggi in corsia (passaggio / rifornimento / sosta / cambio?) con GPS simulato; un'auto veloce sulla corsia non conta.
 - `sim3.js`: pagina `sim.html` (auto simulata): entra come auto, manda `gpsPos` ogni secondo, rispetta lo scenario, si ferma.
 
+- `sim4.js`: come `sim2` sul circuito di Varano com'e' disegnato (box e rifornimento staccati dalla corsia).
+
 ## Simulatore sul PC (senza telefono)
 1. Apri `/sim.html` del sito (o `tools/sim/circuito-esempio.json` come circuito) in una scheda; in un'altra il box con lo stesso codice squadra.
 2. Nel box: Mappa → Circuito → carica lo stesso file, GPS acceso.
-3. Nel simulatore: scenario (un turno per riga: `giri [rifornimento|box secondi]`), Avvia. Va a tempo reale (x1).
+3. Nel simulatore: scenario (`attesa secondi` = lancio con l'auto ferma, poi un turno per riga: `giri [rifornimento|box secondi]`), giro in secondi (tarato sul circuito), Avvia. Va a tempo reale (x1); ⏭ Salta porta 60 s prima del prossimo pit.
 Provato solo con finti socket: il giro completo con il server vero va ancora fatto.

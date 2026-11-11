@@ -15,7 +15,7 @@ srv.listen(8775, async () => {
   await pg.click('#esempio');
   V.ok('circuito di esempio caricato', /giro di/.test(await pg.textContent('#circ')), await pg.textContent('#circ'));
   await pg.fill('#piano', '1\n1 rifornimento 10\n1');
-  await pg.fill('#codice', 'prova');
+  await pg.fill('#codice', 'prova'); await pg.fill('#giro', '0');
   await pg.click('#via');
   await pg.clock.runFor(1500);
   const join = await pg.evaluate(() => window.__em.find((e) => e[0] === 'join'));
@@ -34,6 +34,20 @@ srv.listen(8775, async () => {
   V.ok('nella sosta di 10 s mandati circa 8-12 punti da fermo (' + fermi + ')', fermi >= 7 && fermi <= 13, fermi);
   const prima = await pg.evaluate(() => window.__em.length); await pg.clock.runFor(5000);
   V.ok('dopo la fine non manda piu\' punti', (await pg.evaluate(() => window.__em.length)) === prima);
+  // lancio da 30 s con auto ferma, poi salto
+  await pg.fill('#piano', 'attesa 30\n1 rifornimento 5\n1'); await pg.click('#via'); await pg.clock.runFor(1500);
+  const n0 = await pg.evaluate(() => window.__em.filter((e) => e[0] === 'gpsPos').length);
+  await pg.clock.runFor(10000);
+  const lan = await pg.evaluate((n) => window.__em.filter((e) => e[0] === 'gpsPos').slice(n - 1).map((e) => e[1]), n0);
+  V.ok('durante il lancio l\'auto sta ferma (v ~ 0) e lo stato lo dice', lan.length >= 9 && lan.every((p) => p.v < 0.6) && /lancio/.test(await pg.textContent('#stato')), await pg.textContent('#stato'));
+  await pg.click('#salta'); await pg.clock.runFor(2000);
+  V.ok('"Salta" porta alla partenza', /gara/.test(await pg.textContent('#stato')) && /partenza gara/.test(await pg.textContent('#log')), await pg.textContent('#stato'));
+  await pg.click('#salta'); await pg.clock.runFor(2000);
+  const lg2 = await pg.textContent('#log');
+  V.ok('secondo "Salta": va 60 s prima del prossimo pit', /salto al prossimo pit/.test(lg2), lg2.slice(-200));
+  await pg.fill('#giro', '100'); await pg.fill('#piano', 'attesa 300\n5 rifornimento 30\n5 box 90\n5 rifornimento 30\n3'); await pg.click('#via');
+  const l0 = await pg.textContent('#log');
+  V.ok('esempio a 100 s/giro: lancio 5:00 e gara di circa 40 min', /lancio 5:00 \+ gara (3\d|4\d):\d\d/.test(l0), l0);
   await pg.fill('#piano', '1 volo 10'); await pg.click('#via');
   V.ok('scenario sbagliato: messaggio chiaro, niente collegamento', /rifornimento o box/.test(await pg.textContent('#stato')), await pg.textContent('#stato'));
   V.ok('nessun errore nella pagina', errs.length === 0, errs);

@@ -306,8 +306,21 @@ let gpsPit = { ep: null };        // episodio in corso
 let gpsPitLog = load('pc_gps_pit', []);
 
 function gpsPitInCorsia(p){
+  // box e rifornimento contano come corsia anche se disegnati staccati da essa
+  if(gpsZonaDi(p) !== 'pista') return true;
   if(gpsCfg.corsia && gpsCfg.corsia.length > 1) return gpsDistCorsia(p) <= gpsCfg.larg;
-  return gpsZonaDi(p) !== 'pista';
+  return false;
+}
+
+// Se box o rifornimento sono staccati dalla corsia l'auto ci va con una deviazione: si aspetta di piu' prima di dire che e' uscita.
+function gpsPitUscitaS(){
+  if(!gpsCfg.corsia || gpsCfg.corsia.length < 2) return GPS_PIT_USCITA_S;
+  let max = 0;
+  const cand = [gpsCfg.box];
+  if(gpsCfg.refuelPoly && gpsCfg.refuelPoly.length) cand.push({ lat: gpsCfg.refuelPoly.reduce((a, q) => a + q.lat, 0) / gpsCfg.refuelPoly.length, lng: gpsCfg.refuelPoly.reduce((a, q) => a + q.lng, 0) / gpsCfg.refuelPoly.length });
+  else cand.push(gpsCfg.refuel);
+  cand.forEach((c) => { if(c) max = Math.max(max, gpsDistCorsia(c)); });
+  return GPS_PIT_USCITA_S + Math.min(60, max / 3);
 }
 
 function gpsPitAggiorna(p){
@@ -334,13 +347,14 @@ function gpsPitAggiorna(p){
     }
   } else if(e){
     if(e.fuori == null) e.fuori = t;
-    if((t - e.fuori) / 1000 >= GPS_PIT_USCITA_S) gpsPitChiudi(e);
+    if((t - e.fuori) / 1000 >= gpsPitUscitaS()) gpsPitChiudi(e);
   }
 }
 
 function gpsPitChiudi(e){
   gpsPit.ep = null;
   if(!e.conf) return;                         // era solo un'auto veloce accanto alla corsia
+  if(e.lento < 0.7 * (e.ult - e.ing) / 1000) return; // per lo piu' veloce: era la pista accanto alla corsia
   // con la corsia registrata: deve entrare dall'inizio e percorrerne la maggior parte (non basta rallentare vicino)
   if(e.s0 != null && !(e.s0 <= Math.max(40, e.L * 0.15) && e.smax >= e.L * 0.6)) return;
   const durata = Math.max(0, (e.ult - e.ing) / 1000);
@@ -350,7 +364,7 @@ function gpsPitChiudi(e){
     else if(e.maxFermoS >= gpsCfg.fermoS) tipo = 'cambio?';
     else tipo = 'sosta';
   }
-  const r = { t: e.ing, corsiaS: Math.round(durata * 10) / 10, fermoS: Math.round(e.maxFermoS * 10) / 10, dove: e.dove, tipo, vmaxKmh: Math.round(e.vmax * 36) / 10 };
+  const r = { t: e.ing, corsiaS: Math.round(durata * 10) / 10, fermoS: Math.round(e.maxFermoS * 10) / 10, dove: e.dove, tipo, vmaxKmh: Math.round(e.vmax * 36) / 10, s0: e.s0 == null ? null : Math.round(e.s0), sMax: Math.round(e.smax), L: Math.round(e.L) };
   gpsPitLog.push(r); if(gpsPitLog.length > 40) gpsPitLog.shift();
   save('pc_gps_pit', gpsPitLog);
   gpsRender();
@@ -403,7 +417,7 @@ function gpsAggiornaFermo(p, zona){
     gpsChiede = false;
     gpsCambioFatto = false;
   }
-  gpsInCorsia = gpsCfg.corsia ? gpsDistCorsia(p) <= gpsCfg.larg : zona !== 'pista';
+  gpsInCorsia = gpsCfg.corsia ? (gpsDistCorsia(p) <= gpsCfg.larg || zona === 'box') : zona !== 'pista';
   gpsControllaFermo();
 }
 
@@ -505,7 +519,7 @@ function gpsRender(){
   const riga = $('gpsRiga');
   if(riga){ riga.textContent = gpsRiga(); riga.hidden = !gpsCfg.on; }
   if($('gpsOn')) $('gpsOn').checked = !!gpsCfg.on;
-  if($('gpsMappaBtn')) $('gpsMappaBtn').hidden = !gpsCfg.on;
+  if($('gpsMappaBtn')) $('gpsMappaBtn').hidden = false;
   if($('gpsApplica')) $('gpsApplica').checked = gpsApplica();
   const f = (id, v) => { const e = $(id); if(e && document.activeElement !== e) e.value = v; };
   f('gpsLancioS', gpsCfg.lancioS); f('gpsRBox', gpsCfg.rBox); f('gpsRRefuel', gpsCfg.rRefuel); f('gpsFermoS', gpsCfg.fermoS); f('gpsLarg', gpsCfg.larg);

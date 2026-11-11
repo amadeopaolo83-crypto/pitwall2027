@@ -55,5 +55,6 @@ srv.listen(8774, async () => {
   });
   V.ok('un\'auto veloce che passa sulla corsia (170 km/h) non viene contata', R.veloce === 0, R.veloce);
   V.ok('riga GPS mostra l\'ultimo pit', /ultimo pit/.test(R.riga), R.riga);
+  if (process.env.DEBUG) console.log(JSON.stringify(log));
   V.fine(); await b.close(); srv.close();
 });

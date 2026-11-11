@@ -2,15 +2,17 @@
 // Nessun dato falso entra nel resto dell'app: il box vede una normale auto con il GPS.
 (function () {
   const $ = (id) => document.getElementById(id);
-  let gps = null, pista = null, corsa = null, rum = null, socket = null, timer = null, t0 = 0, ultVerita = 0, vistaMetri = null;
+  let gps = null, pista = null, corsa = null, rum = null, socket = null, timer = null, t0 = 0, ultVerita = 0, attesa = 0, salto = 0, partito = false;
 
   function scrivi(s) { const l = $('log'); l.textContent += s + '\n'; l.scrollTop = l.scrollHeight; }
   function fmt(s) { const m = Math.floor(s / 60); return m + ':' + String(Math.floor(s % 60)).padStart(2, '0'); }
 
   function leggiPiano() {
-    const out = [];
+    const out = []; attesa = 0;
     $('piano').value.split('\n').map((r) => r.trim()).filter(Boolean).forEach((r) => {
-      const p = r.split(/\s+/); const giri = parseInt(p[0], 10);
+      const p = r.split(/\s+/);
+      if (p[0] === 'attesa') { attesa = Math.max(0, Math.min(3600, parseFloat(p[1]) || 0)); return; }
+      const giri = parseInt(p[0], 10);
       if (!(giri >= 1 && giri <= 50)) throw new Error('Riga non valida: "' + r + '" (inizia con il numero di giri)');
       const st = { giri };
       if (p[1]) {
@@ -59,16 +61,27 @@
     $('stato').textContent = msg || 'fermo';
   }
 
+  $('salta').onclick = () => {
+    if (!corsa || !timer) return;
+    const t = (Date.now() - t0) / 1000 + salto - attesa;
+    if (t < -1) { salto += -t; scrivi('(salto: fine del lancio)'); return; }
+    const prossimo = corsa.verita.find((e) => e.tipo === 'entrataLimite' && e.t - 60 > t);
+    if (!prossimo) { scrivi('(nessun altro pit da raggiungere)'); return; }
+    salto += (prossimo.t - 60) - t; scrivi('(salto al prossimo pit: ' + fmt(prossimo.t - 60) + ')');
+  };
   $('stop').onclick = () => ferma('fermato');
   $('via').onclick = () => {
     if (!pista) { $('stato').textContent = 'Scegli prima un circuito'; return; }
     let piano; try { piano = leggiPiano(); } catch (e) { $('stato').textContent = e.message; return; }
     ferma();
     const off = { dx: parseFloat($('dx').value) || 0, dy: parseFloat($('dy').value) || 0 };
-    corsa = Pista.pianifica(pista, piano, { offset: off });
+    const giroS = parseFloat($('giro').value) || 0;
+    const opz = giroS > 0 ? Pista.calibra(pista, giroS) : {};
+    corsa = Pista.pianifica(pista, piano, Object.assign(opz, { offset: off }));
+    salto = 0; partito = false;
     rum = $('rumore').checked ? Pista.rumore(corsa, { seme: parseInt($('seme').value, 10) || 1 }) : null;
     $('log').textContent = '';
-    scrivi('Scenario: ' + corsa.verita.filter((e) => e.tipo === 'sosta').length + ' soste, durata ' + fmt(corsa.durata));
+    scrivi('Scenario: lancio ' + fmt(attesa) + ' + gara ' + fmt(corsa.durata) + ' (totale ' + fmt(attesa + corsa.durata) + '), ' + corsa.verita.filter((e) => e.tipo === 'sosta').length + ' soste' + (giroS > 0 ? ', giro ' + giroS + ' s' : ''));
     const code = $('codice').value.trim().toUpperCase();
     const url = $('srv').value.trim();
     socket = url ? io(url) : io();
@@ -81,13 +94,15 @@
   };
 
   function tick() {
-    const t = (Date.now() - t0) / 1000;
+    const tr = (Date.now() - t0) / 1000 + salto;      // tempo dall'avvio del simulatore
+    const t = tr - attesa;                              // tempo di gara (negativo durante il lancio)
+    if (!partito && t >= 0) { partito = true; scrivi('00:00 VERO: partenza gara'); }
     if (t > corsa.durata + 20) { ferma('finito'); scrivi('Fine scenario'); return; }
-    const w = corsa.vero(t);
+    const w = corsa.vero(Math.max(0, t));
     corsa.verita.forEach((e, i) => { if (i >= ultVerita && e.t <= t) { ultVerita = i + 1; scrivi(fmt(e.t) + ' VERO: ' + e.tipo + (e.dove ? ' ' + e.dove : '') + (e.durataS ? ' ' + e.durataS + ' s' : '')); } });
-    const q = rum ? rum(t) : { lat: w.lat, lng: w.lng, acc: 3, v: w.v };
+    const q = rum ? rum(Math.max(0, t)) : { lat: w.lat, lng: w.lng, acc: 3, v: w.v };
     if (q && socket && socket.connected) socket.emit('gpsPos', { lat: q.lat, lng: q.lng, acc: q.acc, v: q.v });
-    $('stato').textContent = 'tempo ' + fmt(t) + ' · ' + Math.round(w.v * 3.6) + ' km/h' + (q ? '' : ' · punto perso');
+    $('stato').textContent = (t < 0 ? 'lancio -' + fmt(-t) : 'gara ' + fmt(t)) + ' · ' + Math.round(w.v * 3.6) + ' km/h' + (q ? '' : ' · punto perso');
     disegna(pista.pr.xy(w));
   }
 })();

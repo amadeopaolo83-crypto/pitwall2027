@@ -124,11 +124,21 @@
         rac.slice(1, -1).forEach((p) => pushT(p, pista.limiteMs * 1.4));
         const bersaglio = st.pit.dove === 'box' ? pista.centroBox : pista.centroRif;
         const kSosta = bersaglio ? piuVicino(pista.corsia, bersaglio).i : -1;
+        // se la zona e' staccata dalla corsia (piu' di 6 m) l'auto ci va con una deviazione lenta, si ferma e torna sulla corsia
+        const fuori = bersaglio && kSosta >= 0 ? dist(pista.corsia[kSosta], bersaglio) : 0;
+        const deviazione = fuori > 6;
         pista.corsia.forEach((p, k) => {
           const extra = {};
           if (k === 0) extra.evento = 'entrataLimite';
-          if (k === kSosta) { extra.sosta = Math.max(1, st.pit.sostaS || 30); extra.dove = st.pit.dove; }
+          if (k === kSosta && !deviazione) { extra.sosta = Math.max(1, st.pit.sostaS || 30); extra.dove = st.pit.dove; }
           pushT(p, pista.limiteMs, extra);
+          if (k === kSosta && deviazione) {
+            const andata = ricampiona([p, bersaglio], 2);
+            andata.slice(1, -1).forEach((q) => pushT(q, pista.limiteMs * 0.4));
+            pushT(bersaglio, pista.limiteMs * 0.4, { sosta: Math.max(1, st.pit.sostaS || 30), dove: st.pit.dove });
+            andata.slice(1, -1).reverse().forEach((q) => pushT(q, pista.limiteMs * 0.4));
+            pushT(p, pista.limiteMs * 0.4);
+          }
         });
         const cF = pista.corsia[pista.corsia.length - 1];
         const rac2 = ricampiona([cF, T[pista.uscita]], 2);
@@ -246,5 +256,18 @@
     };
   }
 
-  return { costruisci, pianifica, rumore, esempio, casuale, proiettore, lisciaChiusa, ricampiona };
+  // Opzioni (vMax, aLat, aAcc, aFren) che danno un giro "lanciato" di giroS secondi (la corsia box resta al limite).
+  function calibra(pista, giroS, opz) {
+    const base = Object.assign({ vMax: 55, aLat: 9, aAcc: 5.5, aFren: 11 }, opz || {});
+    const giro = (k) => {
+      const o = Object.assign({}, base, { vMax: base.vMax * k, aLat: base.aLat * k * k, aAcc: base.aAcc * k * k, aFren: base.aFren * k * k, vPartenza: base.vMax * k * 0.6 });
+      return (pianifica(pista, [{ giri: 3 }], o).durata - pianifica(pista, [{ giri: 1 }], o).durata) / 2;
+    };
+    let lo = 0.2, hi = 4;
+    for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (giro(m) > giroS) lo = m; else hi = m; }
+    const k = (lo + hi) / 2;
+    return Object.assign({}, base, { vMax: base.vMax * k, aLat: base.aLat * k * k, aAcc: base.aAcc * k * k, aFren: base.aFren * k * k, vPartenza: base.vMax * k * 0.6 });
+  }
+
+  return { costruisci, pianifica, calibra, rumore, esempio, casuale, proiettore, lisciaChiusa, ricampiona };
 });

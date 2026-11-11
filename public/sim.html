@@ -10,21 +10,20 @@ button.r{background:#7a2a2a;border-color:#b04444} .riga{display:flex;gap:8px;fle
 #log{height:150px;overflow:auto;font:12px/1.35 ui-monospace,monospace;background:#0b0f14;border-radius:6px;padding:6px;white-space:pre-wrap} small{color:#9fb3c8}
 </style></head><body>
 <h1>Simulatore auto (GPS finto)</h1>
-<small>Entra come <b>auto</b> nella squadra e manda la posizione ogni secondo, come farebbe il telefono. Apri il box con lo stesso codice (altra scheda), carica lo stesso circuito dalla mappa e accendi il GPS. Va a tempo reale (x1): il box ragiona sull'orologio vero.</small>
+<small>Entra come <b>auto</b> nella squadra e manda la posizione ogni secondo, come farebbe il telefono. Apri il box con lo stesso codice (altra scheda), carica lo stesso circuito dalla mappa e accendi il GPS. Va a tempo reale (x1): il box ragiona sull'orologio vero. Per velocizzare c'è ⏭ Salta (porta 60 s prima del prossimo pit); le soste restano a tempo reale.</small>
 <fieldset><legend>1 · Circuito</legend>
  <div class="riga"><input type="file" id="file" accept=".json,application/json"><button id="esempio">Usa il circuito di esempio</button></div>
  <div id="circ"><small>Nessun circuito.</small></div></fieldset>
 <fieldset><legend>2 · Squadra e server</legend>
  <div class="riga"><label>Codice squadra <input id="codice" size="10" value="SIM"></label><label>Server <input id="srv" size="28" placeholder="(questo sito)"></label></div></fieldset>
-<fieldset><legend>3 · Scenario (un turno per riga: giri [rifornimento|box secondi])</legend>
-<textarea id="piano" spellcheck="false">1
-2 rifornimento 30
-1 rifornimento 1
-1 box 90
-1 box 20
-2</textarea>
- <div class="riga"><label>Sfasamento E <input id="dx" type="number" value="0" step="0.5" style="width:70px"> m</label><label>N <input id="dy" type="number" value="0" step="0.5" style="width:70px"> m</label><label>Seme <input id="seme" type="number" value="1" style="width:60px"></label><label><input type="checkbox" id="rumore" checked> rumore GPS</label></div></fieldset>
-<div class="riga"><button class="p" id="via">▶ Avvia</button><button class="r" id="stop">■ Ferma</button><span id="stato"></span></div>
+<fieldset><legend>3 · Scenario: <code>attesa secondi</code> = lancio con l'auto ferma; poi un turno per riga: <code>giri [rifornimento|box secondi]</code> (pit dopo quei giri)</legend>
+<textarea id="piano" spellcheck="false">attesa 300
+5 rifornimento 30
+5 box 90
+5 rifornimento 30
+3</textarea>
+ <div class="riga"><label>Sfasamento E <input id="dx" type="number" value="0" step="0.5" style="width:70px"> m</label><label>N <input id="dy" type="number" value="0" step="0.5" style="width:70px"> m</label><label>Giro <input id="giro" type="number" value="100" min="0" style="width:60px"> s (0 = non tarare)</label><label>Seme <input id="seme" type="number" value="1" style="width:60px"></label><label><input type="checkbox" id="rumore" checked> rumore GPS</label></div></fieldset>
+<div class="riga"><button class="p" id="via">▶ Avvia</button><button id="salta" title="Salta al prossimo pit (o alla fine del lancio)">⏭ Salta</button><button class="r" id="stop">■ Ferma</button><span id="stato"></span></div>
 <canvas id="mappa" width="720" height="360"></canvas>
 <div id="log"></div>
 <script src="/socket.io/socket.io.js"></script>
