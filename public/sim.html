@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PitComm · Simulatore auto</title>
+<style>
+body{font:15px/1.4 system-ui,sans-serif;margin:0;padding:12px;background:#10151c;color:#e8edf3;max-width:760px}
+h1{font-size:18px;margin:0 0 8px} fieldset{border:1px solid #2b3644;border-radius:8px;margin:8px 0;padding:8px 10px}
+legend{padding:0 6px;color:#9fb3c8} label{display:block;margin:4px 0} input,textarea,button,select{font:inherit;background:#1a2330;color:inherit;border:1px solid #33475e;border-radius:6px;padding:5px 8px}
+textarea{width:100%;box-sizing:border-box;height:90px;font-family:ui-monospace,monospace} button{cursor:pointer} button.p{background:#1d6f42;border-color:#2a9d5c}
+button.r{background:#7a2a2a;border-color:#b04444} .riga{display:flex;gap:8px;flex-wrap:wrap;align-items:center} canvas{width:100%;background:#0b0f14;border-radius:8px;border:1px solid #2b3644}
+#log{height:150px;overflow:auto;font:12px/1.35 ui-monospace,monospace;background:#0b0f14;border-radius:6px;padding:6px;white-space:pre-wrap} small{color:#9fb3c8}
+</style></head><body>
+<h1>Simulatore auto (GPS finto)</h1>
+<small>Entra come <b>auto</b> nella squadra e manda la posizione ogni secondo, come farebbe il telefono. Apri il box con lo stesso codice (altra scheda), carica lo stesso circuito dalla mappa e accendi il GPS. Va a tempo reale (x1): il box ragiona sull'orologio vero.</small>
+<fieldset><legend>1 · Circuito</legend>
+ <div class="riga"><input type="file" id="file" accept=".json,application/json"><button id="esempio">Usa il circuito di esempio</button></div>
+ <div id="circ"><small>Nessun circuito.</small></div></fieldset>
+<fieldset><legend>2 · Squadra e server</legend>
+ <div class="riga"><label>Codice squadra <input id="codice" size="10" value="SIM"></label><label>Server <input id="srv" size="28" placeholder="(questo sito)"></label></div></fieldset>
+<fieldset><legend>3 · Scenario (un turno per riga: giri [rifornimento|box secondi])</legend>
+<textarea id="piano" spellcheck="false">1
+2 rifornimento 30
+1 rifornimento 1
+1 box 90
+1 box 20
+2</textarea>
+ <div class="riga"><label>Sfasamento E <input id="dx" type="number" value="0" step="0.5" style="width:70px"> m</label><label>N <input id="dy" type="number" value="0" step="0.5" style="width:70px"> m</label><label>Seme <input id="seme" type="number" value="1" style="width:60px"></label><label><input type="checkbox" id="rumore" checked> rumore GPS</label></div></fieldset>
+<div class="riga"><button class="p" id="via">▶ Avvia</button><button class="r" id="stop">■ Ferma</button><span id="stato"></span></div>
+<canvas id="mappa" width="720" height="360"></canvas>
+<div id="log"></div>
+<script src="/socket.io/socket.io.js"></script>
+<script>if(!window.io){document.write('<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"><\/script>');}</script>
+<script src="/js/pista.js"></script>
+<script src="/js/sim.js"></script>
+</body></html>

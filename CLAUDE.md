@@ -37,6 +37,7 @@ box e auto (PWA + server Node + involucro Android). Questo repository (`Pitwall2
 - Messaggi di commit in italiano, brevi; finire con le righe di attribuzione richieste dall'ambiente.
 
 - Doppio box (`src/doppiobox.js`, `public/js/doppiobox.js`, variabile `DOPPIO_BOX=1`): primario comanda, secondari mandano messaggi, rifornimenti e rispondono al cambio pilota; il primario puo' cedere la priorita' a tempo. Elenco dei comandi riservati: `SOLO_PRIMARIO` in `sockets.js`.
+- Simulatore: `public/js/pista.js` (pista, giri, soste, rumore GPS), `public/sim.html` + `js/sim.js` (auto finta che manda `gpsPos`), esempio in `tools/sim/`. Il box registra in `pc_gps_pit` i passaggi in corsia riconosciuti dalla velocita' (solo registro, non cambia gli stati).
 
 ## Da fare / aperto
 - Vedi `docs/REVISIONE.md` (difetti, architettura, evoluzione). `BOX_PIN` e' facoltativo: senza, il server si comporta come prima.

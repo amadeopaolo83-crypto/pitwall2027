@@ -1,0 +1,41 @@
+// Pagina simulatore (sim.html): entra come auto, manda gpsPos ogni secondo, rispetta lo scenario, si ferma da sola.
+const { chromium } = require('playwright'); const http = require('http'), fs = require('fs'), path = require('path');
+const C = require('./comune'); const V = C.controlli('sim3'); const root = C.ROOT;
+const srv = http.createServer((q, s) => { let p = decodeURIComponent(q.url.split('?')[0]);
+  const f = path.join(root, p); fs.readFile(f, (e, d) => { if (e) { s.writeHead(404); return s.end(); }
+    s.writeHead(200, { 'Content-Type': { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }[path.extname(f)] || 'application/octet-stream' }); s.end(d); }); });
+srv.listen(8775, async () => {
+  const b = await chromium.launch(); const pg = await b.newPage({ viewport: { width: 390, height: 900 } });
+  const errs = []; pg.on('pageerror', (e) => errs.push(e.message));
+  const stub = `window.__em=[];window.io=()=>{const h={};const s={connected:true,on(n,f){h[n]=f;if(n==='connect')setTimeout(f,0)},off(){},disconnect(){s.connected=false},
+    emit(...a){window.__em.push(a);const ack=a[a.length-1];if(a[0]==='join'&&typeof ack==='function')ack({ok:true,state:{gps:{on:true}}})}};return s};`;
+  await pg.route('**/socket.io/socket.io.js', (r) => r.fulfill({ contentType: 'text/javascript', body: stub }));
+  await pg.clock.install({ time: 1.7e12 });
+  await pg.goto('http://localhost:8775/sim.html');
+  await pg.click('#esempio');
+  V.ok('circuito di esempio caricato', /giro di/.test(await pg.textContent('#circ')), await pg.textContent('#circ'));
+  await pg.fill('#piano', '1\n1 rifornimento 10\n1');
+  await pg.fill('#codice', 'prova');
+  await pg.click('#via');
+  await pg.clock.runFor(1500);
+  const join = await pg.evaluate(() => window.__em.find((e) => e[0] === 'join'));
+  V.ok('entra come auto con il codice in maiuscolo', join && join[1].role === 'auto' && join[1].code === 'PROVA', join && join[1]);
+  await pg.clock.runFor(60000);
+  const pos = await pg.evaluate(() => window.__em.filter((e) => e[0] === 'gpsPos').map((e) => e[1]));
+  V.ok('manda circa un punto al secondo (' + pos.length + ' in 60 s)', pos.length >= 55 && pos.length <= 62, pos.length);
+  V.ok('i punti hanno lat, lng, acc, v', pos.every((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && Number.isFinite(p.acc) && Number.isFinite(p.v) && p.v >= 0));
+  await pg.clock.runFor(120000);
+  await pg.clock.runFor(120000);
+  V.ok('a fine scenario si ferma da sola', /finito/.test(await pg.textContent('#stato')), await pg.textContent('#stato'));
+  const log = await pg.textContent('#log');
+  V.ok('il registro mostra la verita\' (entrata in corsia, sosta)', /VERO: entrataLimite/.test(log) && /VERO: sosta rifornimento 10 s/.test(log), log);
+  const tutti = await pg.evaluate(() => window.__em.filter((e) => e[0] === 'gpsPos').map((e) => e[1]));
+  const fermi = tutti.slice(5, 255).filter((p) => p.v < 0.5).length;
+  V.ok('nella sosta di 10 s mandati circa 8-12 punti da fermo (' + fermi + ')', fermi >= 7 && fermi <= 13, fermi);
+  const prima = await pg.evaluate(() => window.__em.length); await pg.clock.runFor(5000);
+  V.ok('dopo la fine non manda piu\' punti', (await pg.evaluate(() => window.__em.length)) === prima);
+  await pg.fill('#piano', '1 volo 10'); await pg.click('#via');
+  V.ok('scenario sbagliato: messaggio chiaro, niente collegamento', /rifornimento o box/.test(await pg.textContent('#stato')), await pg.textContent('#stato'));
+  V.ok('nessun errore nella pagina', errs.length === 0, errs);
+  V.fine(); await b.close(); srv.close();
+});

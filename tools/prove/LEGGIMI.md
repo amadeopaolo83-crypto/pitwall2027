@@ -31,3 +31,12 @@ Le schermate vanno nella cartella temporanea (`pitcomm-prove`) o in `PROVE_OUT`.
   comandi `SOLO_PRIMARIO` negati al secondario (elenco letto da `sockets.js`), cedi / riprendi / prendi, ricollegamento,
   primario perso per 20 s, eventi scartati senza tracce (`fresh.timer`, archivio). Serve
   `npm install --no-save socket.io-client@4`; dura circa 30 s.
+- `sim1.js`: pista simulata (`public/js/pista.js`): giro, limite in corsia, soste dove devono essere, rumore GPS, sfasamento satellite.
+- `sim2.js`: il box riconosce dalla velocita' i passaggi in corsia (passaggio / rifornimento / sosta / cambio?) con GPS simulato; un'auto veloce sulla corsia non conta.
+- `sim3.js`: pagina `sim.html` (auto simulata): entra come auto, manda `gpsPos` ogni secondo, rispetta lo scenario, si ferma.
+
+## Simulatore sul PC (senza telefono)
+1. Apri `/sim.html` del sito (o `tools/sim/circuito-esempio.json` come circuito) in una scheda; in un'altra il box con lo stesso codice squadra.
+2. Nel box: Mappa → Circuito → carica lo stesso file, GPS acceso.
+3. Nel simulatore: scenario (un turno per riga: `giri [rifornimento|box secondi]`), Avvia. Va a tempo reale (x1).
+Provato solo con finti socket: il giro completo con il server vero va ancora fatto.
