@@ -17,12 +17,12 @@
       if (p[0] === 'attesa' || p[0] === 'lancio') {   // attesa N = auto ferma; lancio N = auto che gira (ritmo con la barra) fino allo zero
         zeroS = Math.max(0, Math.min(3600, parseFloat(p[1]) || 0)); modoLancio = p[0] === 'lancio'; return;
       }
-      if (p[0] === 'sc') {            // safety car: sc <dal giro> <per quanti giri> [velocita' %]
+      if (p[0] === 'sc') {            // giri lenti per tutti: sc <dal giro> <per quanti giri> [velocita' %]
         const da = parseInt(p[1], 10), gg = parseInt(p[2], 10), pc = parseFloat(p[3]) || 55;
         if (!(da >= 1 && gg >= 1 && pc >= 20 && pc <= 95)) throw new Error('Riga "' + r + '": sc dal-giro quanti-giri [velocità %]');
         rall.push({ daGiro: da, giri: gg, fattore: pc / 100 }); return;
       }
-      if (p[0] === 'pausa') {         // bandiera rossa: pausa <dopo quanti giri> <secondi>
+      if (p[0] === 'pausa') {         // gara ferma: pausa <dopo quanti giri> <secondi>
         const gi = parseInt(p[1], 10), se = parseFloat(p[2]);
         if (!(gi >= 1 && se >= 10 && se <= 1800)) throw new Error('Riga "' + r + '": pausa dopo-giri secondi (10-1800)');
         pau.push({ giro: gi, durataS: se }); return;

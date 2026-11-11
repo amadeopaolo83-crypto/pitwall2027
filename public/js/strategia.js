@@ -1,5 +1,5 @@
 // Strategia degli altri, letta dai soli tempi del live timing (il server la calcola in src/strategia.js e la manda a tutti).
-// Qui solo la scheda del box: soste e stint dei rivali, safety / sospensione, e il momento migliore per il nostro pit.
+// Qui solo la scheda del box: soste e stint dei rivali, giri lenti per tutti / gara ferma, e il momento migliore per il nostro pit.
 let strategiaRis = null;
 
 function strategiaRicevi(r){
@@ -25,8 +25,8 @@ function strategiaRender(){
     return;
   }
   let h = '';
-  if(r.sospensione) h += '<div class="strat-ban strat-red">Gara sospesa (bandiera rossa)</div>';
-  else if(r.safety) h += '<div class="strat-ban strat-sc">Safety car / giri lenti per tutti: le soste adesso non si leggono</div>';
+  if(r.sospensione) h += '<div class="strat-ban strat-red">Gara ferma: nessuno passa sul traguardo</div>';
+  else if(r.safety) h += '<div class="strat-ban strat-sc">Giri lenti per tutti: le soste adesso non si leggono</div>';
 
   const s = r.sugg;
   if(s && Array.isArray(s.tabella) && s.tabella.length){

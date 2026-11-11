@@ -90,8 +90,12 @@ function coloraGap(lato, testo, chiave){
   if(!el) return;
   const s = (typeof passoSecDaGap === 'function') ? passoSecDaGap(testo) : null;
   const st = gapStato[lato];
-  if(s == null || st.key !== chiave){
-    st.key = s == null ? null : chiave; st.ref = s; st.dir = null;
+  if(s == null){
+    // Un valore non numerico ("1 giro", vuoto) dura pochi secondi a ogni giro, quando uno dei due ha gia' passato la linea:
+    // con lo stesso avversario si tiene il colore; riparte da bianco solo se l'avversario cambia.
+    if(st.key !== chiave){ st.key = null; st.ref = null; st.dir = null; }
+  } else if(st.key !== chiave){
+    st.key = chiave; st.ref = s; st.dir = null;
   } else if(Math.abs(s - st.ref) > sogliaGap){
     st.dir = s < st.ref ? 'shrink' : 'grow';
     st.ref = s;

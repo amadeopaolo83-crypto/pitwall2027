@@ -42,9 +42,9 @@ srv.listen(8799, async () => {
   V.ok('le soste dei rivali compaiono (' + nSoste + ' in totale, tipo scritto in italiano)', /rifornimento|cambio pilota\?|sosta lunga/.test(t1) && nSoste > 5);
   await pg.locator('#strategiaBox').scrollIntoViewIfNeeded(); await pg.screenshot({ path: C.OUT + '/strategia-normale.png' });
   await pg.evaluate((r) => strategiaRicevi(r), safety);
-  V.ok('safety: banner giallo', /Safety car/.test(await testo()) && await pg.evaluate(() => !!document.querySelector('#strategiaBox .strat-sc')));
+  V.ok('giri lenti per tutti: banner giallo', /Giri lenti per tutti/.test(await testo()) && await pg.evaluate(() => !!document.querySelector('#strategiaBox .strat-sc')));
   await pg.evaluate((r) => strategiaRicevi(r), sosp);
-  V.ok('sospensione: banner rosso', await pg.evaluate(() => !!document.querySelector('#strategiaBox .strat-red')));
+  V.ok('gara ferma: banner rosso', await pg.evaluate(() => !!document.querySelector('#strategiaBox .strat-red')));
   await pg.screenshot({ path: C.OUT + '/strategia-sospesa.png' });
   // nomi con HTML: non si deve eseguire nulla (il testo del rivale e' del live timing)
   const sporco = JSON.parse(JSON.stringify(normale)); sporco.rivali[0].numero = '<img src=x onerror="window.__xss=1">'; sporco.rivali[0].soste[0] = { giro: 3, tipo: '<b onclick="window.__xss=1">x</b>', extraS: 50 };

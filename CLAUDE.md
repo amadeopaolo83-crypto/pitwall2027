@@ -43,5 +43,5 @@ box e auto (PWA + server Node + involucro Android). Questo repository (`Pitwall2
 - Vedi `docs/REVISIONE.md` (difetti, architettura, evoluzione). `BOX_PIN` e' facoltativo: senza, il server si comporta come prima.
 - Prove su telefoni veri (GPS, notifiche, sirena, permessi, risparmio batteria).
 - Scraper del live timing di Claudio (materiale in arrivo).
-- Strategia degli altri: fatta (`src/strategia.js` dai soli tempi, scheda nel Passo del box, `strategiaUpdate`); provata solo su finto ponte, da confrontare con un live timing vero (soste sotto safety/bandiera rossa invisibili, "cambio pilota?" e' una supposizione dalla durata).
+- Strategia degli altri: fatta (`src/strategia.js` dai soli tempi, scheda nel Passo del box, `strategiaUpdate`); provata solo su finto ponte, da confrontare con un live timing vero (soste durante giri lenti per tutti o gara ferma invisibili, "cambio pilota?" e' una supposizione dalla durata).
 - Circuiti salvati per pista (file `.json` dal modo Circuito della mappa).

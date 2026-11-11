@@ -37,7 +37,7 @@ Le schermate vanno nella cartella temporanea (`pitcomm-prove`) o in `PROVE_OUT`.
 
 - `sim4.js`: come `sim2` sul circuito di Varano com'e' disegnato (box e rifornimento staccati dalla corsia).
 - `sim5.js`: finto ponte (`src/simponte.js`, solo con `SIM_PONTE=1`): classifica, safety car, pause, HTTP, collegamento con `ponte.js`.
-- `sim8.js`: strategia degli altri (`src/strategia.js`): soste, tipo, safety, bandiera rossa, prossima sosta, suggerimento del pit, confrontati con la verita' del finto ponte.
+- `sim8.js`: strategia degli altri (`src/strategia.js`): soste, tipo, giri lenti per tutti, gara ferma, prossima sosta, suggerimento del pit, confrontati con la verita' del finto ponte.
 - `sim9.js`: scheda "Strategia degli altri" nel box (dati veri del replay, banner, tabella, nessun HTML iniettato).
 - `sim10.js`: giro di riferimento del lancio su Varano (corsia innestata sulla pista, rumore GPS): si forma al secondo passaggio; un giro con sosta in corsia no.
 
@@ -50,5 +50,5 @@ Provato solo con finti socket: il giro completo con il server vero va ancora fat
 ### Timing finto (SIM_PONTE=1)
 Su Render (Pitwall2027, solo la copia di prova) aggiungi la variabile `SIM_PONTE=1`. Nel simulatore lascia "timing finto" acceso: al via manda
 la corsa al server. Nel box: Distacchi → Nostro → indirizzo `https://pitcomm.sim/CODICE-SQUADRA` e numero 77 (o quello messo nel simulatore).
-Scenario: `sc dal-giro quanti-giri [velocita'%]` = safety car (tutti rallentano, anche la nostra auto), `pausa dopo-giri secondi` = bandiera rossa (tutti fermi sul traguardo).
+Scenario: `sc dal-giro quanti-giri [velocita'%]` = giri lenti per tutti (tutti rallentano, anche la nostra auto), `pausa dopo-giri secondi` = gara ferma (tutti fermi sul traguardo).
 Gli altri sono piloti virtuali: stesso formato del ponte vero, solo tempi.
