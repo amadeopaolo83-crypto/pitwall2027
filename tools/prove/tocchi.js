@@ -24,7 +24,7 @@ srv.listen(8793, async () => {
         enterBoxView();
         gpsApplicaConfig({ on: true, box: { lat: 1, lng: 1 }, refuel: { lat: 1, lng: 1 } }); gpsChiede = true; gpsUltima = { acc: 3 }; gpsUltimaBuona = Date.now(); gpsRender();
         const piccoli = [], fuori = []; let tot = 0; const W = document.documentElement.clientWidth;
-        for (const tab of ['gara', 'timing', 'passo', 'settings']) {
+        for (const tab of ['comm', 'gara', 'timing', 'passo', 'settings']) {
           setBoxTab(tab);
           await new Promise((ok) => setTimeout(ok, 50));
           document.querySelectorAll('#boxView button, #boxView input, #boxView select, #boxView textarea, #boxView [onclick]').forEach((e) => {

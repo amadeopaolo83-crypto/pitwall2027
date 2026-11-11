@@ -237,7 +237,7 @@ function applyState(state){
   }
   if(typeof finishFotoRipristina === 'function') finishFotoRipristina(state);
   if(state.cambioPilota && state.cambioPilota.da && typeof gpsCambio !== 'undefined' && state.cambioPilota.da > (gpsCambio.da || 0)){
-    gpsCambio = { n: state.cambioPilota.n, da: state.cambioPilota.da }; save('pc_gps_cambio', gpsCambio);
+    gpsImpostaCambio(state.cambioPilota.n, state.cambioPilota.da);
   }
   if(state.timing) renderTiming(state.timing);
   if(state.aub) renderAubStatus(state.aub);

@@ -33,7 +33,7 @@ let gpsStatoDa = 0;
 let gpsCandidato = null, gpsCandidatoDa = 0;
 let gpsWatch = null;           // auto: invio della posizione
 let gpsInvioUltimo = 0;
-let gpsCambio = load('pc_gps_cambio', { n: 0, da: null }); // cambi pilota registrati e inizio turno
+let gpsCambio = Object.assign({ n: 0, da: null, pistaMs: 0 }, load('pc_gps_cambio', {})); // cambi pilota registrati, inizio turno e tempo passato IN PISTA nel turno
 let gpsCambioFatto = false;    // alla domanda di questa sosta si e' gia' risposto
 let gpsChiedeRipartita = 0;    // quando l'auto e' ripartita con la domanda ancora aperta (0 = no); resta aperta GPS_DOMANDA_APERTA_S
 let gpsChiedeDurata = 0;       // quanto e' rimasta ferma, in secondi
@@ -337,7 +337,7 @@ function gpsCambiaStato(nuovo){
   const prima = gpsStato;
   gpsStato = nuovo;
   gpsStatoDa = Date.now();
-  if(nuovo === 'pista' && !gpsCambio.da){ gpsCambio.da = Date.now(); save('pc_gps_cambio', gpsCambio); }
+  if(nuovo === 'pista' && !gpsCambio.da){ gpsCambio.da = Date.now(); gpsCambio.pistaMs = 0; save('pc_gps_cambio', gpsCambio); }
   if(!gpsApplica()) return;
   if(typeof setOnTrack === 'function') setOnTrack(nuovo === 'pista');
   void prima;
@@ -515,7 +515,9 @@ function gpsControllaFermo(){
     gpsChiede = true;
     if(socket && socket.connected) socket.emit('cambioDomanda', { ancoraDa: gpsAncoraDa });
     try{ if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }catch(e){}
+    try{ if(typeof playAlertBeep === 'function') playAlertBeep(); }catch(e){}
     if(typeof notificaAndroid === 'function') notificaAndroid('PitComm', 'Auto ferma in corsia box: era un cambio pilota?');
+    gpsRender();
   }
 }
 
@@ -534,35 +536,48 @@ function gpsDomandaRemota(d){
   gpsChiede = true; gpsCambioFatto = false;
   if(d && Number.isFinite(d.ancoraDa)) gpsAncoraDa = d.ancoraDa;
   try{ if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }catch(e){}
+  try{ if(typeof playAlertBeep === 'function') playAlertBeep(); }catch(e){}
   if(typeof notificaAndroid === 'function') notificaAndroid('PitComm', 'Auto ferma in corsia box: era un cambio pilota?');
   gpsRender();
 }
 
 // L'altro box ha risposto: la domanda sparisce anche qui e, se era un cambio, si aggiorna il turno.
+// Nuovo turno: il tempo in pista riparte da zero.
+function gpsImpostaCambio(n, da){
+  gpsCambio = { n: n || 0, da: da || null, pistaMs: 0 };
+  save('pc_gps_cambio', gpsCambio);
+}
+
 function gpsRispostaRemota(d){
   gpsChiede = false; gpsChiedeRipartita = 0; gpsCambioFatto = true;
-  if(d && d.si && d.cambioPilota && d.cambioPilota.da){ gpsCambio = { n: d.cambioPilota.n, da: d.cambioPilota.da }; save('pc_gps_cambio', gpsCambio); }
+  if(d && d.si && d.cambioPilota && d.cambioPilota.da) gpsImpostaCambio(d.cambioPilota.n, d.cambioPilota.da);
   gpsRender();
 }
 
 function gpsAzzeraRemoto(){
-  gpsCambio = { n: 0, da: null };
-  save('pc_gps_cambio', gpsCambio);
+  gpsImpostaCambio(0, null);
   gpsRender();
 }
 
 function gpsRegistraCambio(){
   gpsCambioFatto = true;
-  gpsCambio = { n: (gpsCambio.n || 0) + 1, da: Date.now() };
-  save('pc_gps_cambio', gpsCambio);
+  gpsImpostaCambio((gpsCambio.n || 0) + 1, Date.now());
   gpsRender();
+}
+
+// Cambio pilota segnato a mano (pulsante nella scheda Gara): vale sempre, anche senza domanda aperta
+// e anche con il GPS spento; lo sanno anche gli altri box.
+function gpsCambioManuale(btnEl){
+  gpsChiede = false; gpsChiedeRipartita = 0;
+  gpsRegistraCambio();
+  if(socket && socket.connected) socket.emit('cambioRisposta', { si: true, n: gpsCambio.n, manuale: true });
+  if(typeof flashConfirm === 'function') flashConfirm(btnEl);
 }
 
 function gpsAzzeraCambi(){
   if(!boxPrimario){ if(typeof boxNegato === 'function') boxNegato(); return; }
   if(socket && socket.connected) socket.emit('cambioAzzera');
-  gpsCambio = { n: 0, da: null };
-  save('pc_gps_cambio', gpsCambio);
+  gpsImpostaCambio(0, null);
   gpsRender();
 }
 
@@ -590,12 +605,51 @@ function gpsRiga(){
   }
   const up = gpsPitLog[gpsPitLog.length - 1];
   if(up) t += ' · ultimo pit: ' + up.tipo + (up.fermoS >= GPS_PIT_MIN_SOSTA_S ? ' ' + Math.round(up.fermoS) + ' s fermo' : '') + ', corsia ' + Math.round(up.corsiaS) + ' s';
-  if(gpsCambio.da) t += ' · turno pilota ' + gpsMinSec(ora - gpsCambio.da) + (gpsCambio.n ? ' (cambi: ' + gpsCambio.n + ')' : '');
   return t;
+}
+
+// Stint massimo del pilota (minuti, 0 = spento): impostazione di questo box.
+function gpsStintMax(){ let v = 0; try{ v = Number(localStorage.getItem('pc_stint_max')) || 0; }catch(e){} return v > 0 ? v : 0; }
+
+function gpsImpostaStintMax(el){
+  const n = parseFloat(String(el.value).replace(',', '.'));
+  try{ localStorage.setItem('pc_stint_max', String(isFinite(n) && n > 0 ? Math.round(n) : 0)); }catch(e){}
+  gpsRender();
+}
+
+function gpsTurnoTesto(){
+  const max = gpsStintMax();
+  if(!gpsCambio.da) return 'Turno pilota: non ancora iniziato (parte quando l\u2019auto esce in pista)' + (max ? ' \u00b7 stint massimo ' + max + ' min' : '');
+  const ms = gpsCambio.pistaMs || 0;
+  let t = 'Turno pilota ' + (gpsCambio.n ? ' ' + (gpsCambio.n + 1) : '') + ': ' + gpsMinSec(ms) + ' in pista' + (fuelSystem && fuelSystem.onTrack ? '' : ' (fermo: ai box)');
+  if(max) t += ' \u00b7 massimo ' + max + ' min \u00b7 ' + (ms >= max * 60000 ? 'SUPERATO di ' + gpsMinSec(ms - max * 60000) : 'restano ' + gpsMinSec(max * 60000 - ms));
+  return t;
+}
+
+// Conta il tempo del turno solo mentre l'auto e' in pista (ai box e in corsia non si conta).
+let gpsTurnoUltimo = 0, gpsTurnoSalvato = 0;
+function gpsTurnoTick(){
+  if(role !== 'box') return;
+  const ora = Date.now(), dt = gpsTurnoUltimo ? Math.min(ora - gpsTurnoUltimo, 3000) : 0;
+  gpsTurnoUltimo = ora;
+  if(typeof fuelSystem === 'undefined' || !fuelSystem.onTrack) return;
+  if(!gpsCambio.da){ gpsCambio.da = ora; gpsCambio.pistaMs = 0; }
+  gpsCambio.pistaMs = (gpsCambio.pistaMs || 0) + dt;
+  if(ora - gpsTurnoSalvato > 5000){ gpsTurnoSalvato = ora; save('pc_gps_cambio', gpsCambio); }
+  const max = gpsStintMax();
+  if(max && typeof crControlla === 'function'){
+    const ms = gpsCambio.pistaMs, lim = max * 60000;
+    crControlla('stint-max', ms >= lim, 'Stint massimo raggiunto: ' + gpsMinSec(ms) + ' in pista (massimo ' + max + ' min)');
+    if(max > 10) crControlla('stint-5', ms >= lim - 5 * 60000 && ms < lim, 'Stint: restano 5 minuti (massimo ' + max + ' min)');
+  }
 }
 
 function gpsRender(){
   if(role !== 'box') return;
+  const tb = $('boxTabBtn_gara');
+  if(tb) tb.classList.toggle('tab-avviso', !!(gpsCfg.on && gpsChiede));
+  if($('turnoTesto')) $('turnoTesto').textContent = gpsTurnoTesto();
+  if($('stintMaxInput') && document.activeElement !== $('stintMaxInput')) $('stintMaxInput').value = gpsStintMax() || '';
   const dom = $('gpsDomanda');
   if(dom){
     dom.hidden = !(gpsCfg.on && gpsChiede);
@@ -615,7 +669,9 @@ function gpsRender(){
 }
 
 setInterval(() => {
-  if(role !== 'box' || !gpsCfg.on) return;
+  if(role !== 'box') return;
+  try{ gpsTurnoTick(); }catch(e){}
+  if(!gpsCfg.on){ gpsRender(); return; }
   gpsControllaFermo();
   gpsRender();
 }, 1000);

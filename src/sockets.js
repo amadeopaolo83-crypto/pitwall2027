@@ -785,11 +785,12 @@ function registra(io) {
       state.cambioDomanda = { at: Date.now() };
       socket.to(joinedCode).emit("cambioDomanda", { ancoraDa: eNum(ancoraDa, 0, 1e14) ? ancoraDa : Date.now() });
     });
-    socket.on("cambioRisposta", ({ si, n } = {}) => {
+    socket.on("cambioRisposta", ({ si, n, manuale } = {}) => {
       if (!joinedCode) return;
       const state = getRoomState(joinedCode);
       const d = state.cambioDomanda;
-      if (!d || Date.now() - d.at > 30 * 60000) return;      // nessuna domanda aperta (o gia' chiusa da un altro box)
+      // senza domanda aperta (o gia' chiusa da un altro box) vale solo il cambio segnato a mano
+      if ((!d || Date.now() - d.at > 30 * 60000) && !(manuale === true && si === true)) return;
       state.cambioDomanda = null;
       if (si === true) state.cambioPilota = { n: eNum(n, 1, 999) ? n : ((state.cambioPilota && state.cambioPilota.n) || 0) + 1, da: Date.now() };
       socket.to(joinedCode).emit("cambioRisposta", { si: si === true, cambioPilota: state.cambioPilota });

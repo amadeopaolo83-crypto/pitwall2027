@@ -68,6 +68,8 @@ function applyTimingView(view){
   timingView = view === 'categoria' ? 'categoria' : 'assoluta';
   if($('segViewAss')) $('segViewAss').classList.toggle('active', timingView === 'assoluta');
   if($('segViewCat')) $('segViewCat').classList.toggle('active', timingView === 'categoria');
+  if($('segViewAss2')) $('segViewAss2').classList.toggle('active', timingView === 'assoluta');
+  if($('segViewCat2')) $('segViewCat2').classList.toggle('active', timingView === 'categoria');
   if(lastTiming) renderTiming(lastTiming);
 }
 

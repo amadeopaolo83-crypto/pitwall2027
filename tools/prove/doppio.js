@@ -76,6 +76,16 @@ const { getRoomState } = require(C.SRC + '/rooms.js');
   A.invia('cambioRisposta', { si: true, n: 2 });
   V.ok('cambio pilota: una sola risposta vale (la seconda e\' ignorata)', B.vide('cambioRisposta').length === 0 && getRoomState('DBL').cambioPilota.n === 1);
   B.invia('cambioDomanda', { ancoraDa: 1 }); V.ok('cambio pilota: il secondario non apre la domanda', A.vide('cambioDomanda').length === 0);
+  const nA = () => A.vide('cambioRisposta').length, nB = () => B.vide('cambioRisposta').length;
+  let a0 = nA(), b0 = nB();
+  B.invia('cambioRisposta', { si: true, n: 2 });
+  V.ok('cambio pilota: senza domanda aperta una risposta normale e\' ignorata', nA() === a0 && getRoomState('DBL').cambioPilota.n === 1);
+  B.invia('cambioRisposta', { si: true, n: 2, manuale: true });
+  V.ok('cambio pilota a mano: vale anche senza domanda e lo riceve l\'altro box', nA() === a0 + 1 && A.ultimo('cambioRisposta').cambioPilota.n === 2 && getRoomState('DBL').cambioPilota.n === 2);
+  a0 = nA();
+  A.invia('cambioRisposta', { si: false, manuale: true });
+  V.ok('cambio a mano con "no" non fa niente', nA() === a0 && nB() === b0 && getRoomState('DBL').cambioPilota.n === 2);
+  getRoomState('DBL').cambioPilota = { n: 1, da: getRoomState('DBL').cambioPilota.da };
   B.invia('cambioAzzera'); V.ok('cambio pilota: il secondario non azzera i cambi', getRoomState('DBL').cambioPilota.n === 1);
 
   // cedere la priorita'

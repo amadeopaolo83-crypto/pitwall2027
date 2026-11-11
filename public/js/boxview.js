@@ -1,9 +1,10 @@
 // Vista box: pannello di controllo. Pulsanti rapidi, messaggi a schermo intero
 // e cronologia di quello che arriva dall'auto.
 
-// Schede del box: Gara / Timing / Passo / Impostazioni. Si ricorda l'ultima aperta.
+// Schede del box: Comm / Gara / Passo / Impostazioni / Timing. Si ricorda l'ultima aperta.
+const BOX_TABS = ['comm', 'gara', 'passo', 'settings', 'timing'];
 function setBoxTab(name){
-  ['gara', 'timing', 'passo', 'settings'].forEach(n => {
+  BOX_TABS.forEach(n => {
     const pane = $('boxTab_' + n), btn = $('boxTabBtn_' + n);
     if(pane) pane.hidden = n !== name;
     if(btn) btn.classList.toggle('on', n === name);
@@ -15,7 +16,7 @@ function enterBoxView(){
   $('boxView').hidden = false;
   let tab = 'gara';
   try{ tab = localStorage.getItem('pc_box_tab') || 'gara'; }catch(e){}
-  setBoxTab(['gara', 'timing', 'passo', 'settings'].includes(tab) ? tab : 'gara');
+  setBoxTab(BOX_TABS.includes(tab) ? tab : 'gara');
   $('boxCodePill').textContent = code;
   // Numero di gara, indirizzo, utente e chiave si ricordano su questo dispositivo
   // (la chiave resta finche' non si preme "Dimentica la chiave"). Il posto piu' sicuro
@@ -278,3 +279,15 @@ function setBoxAwake(on){
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState === 'visible' && role === 'box' && localStorage.getItem('pc_box_awake') === '1' && !boxWakeLock) applyBoxAwake();
 });
+
+// Conferma visiva: ogni pulsante del box (non le schede) si illumina per un secondo quando lo si preme.
+// Solo la vista box: quella dell'auto non cambia.
+document.addEventListener('click', (e) => {
+  try{
+    const el = e.target && e.target.closest ? e.target.closest('#boxView button, #boxView label.toggle') : null;
+    if(!el || el.classList.contains('tab') || el.disabled) return;
+    el.classList.add('premuto');
+    clearTimeout(el._premutoT);
+    el._premutoT = setTimeout(() => el.classList.remove('premuto'), 1000);
+  }catch(err){}
+}, true);
