@@ -16,7 +16,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
 <script>if(!window.io){document.write('<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"><\/script>');}</script>
-<link rel="stylesheet" href="css/style.css?v=50" />
+<link rel="stylesheet" href="css/style.css?v=51" />
 </head>
 <body>
 
@@ -133,6 +133,11 @@
   </div>
   <div id="boxRuoloBar" class="box-ruolo" hidden></div>
   <button id="changeRoleBtn" onclick="resetRole()">◄ cambia ruolo / codice</button>
+  <div class="cambio-avviso" id="cambioAvviso" hidden>
+    <span id="cambioAvvisoTesto">Auto ferma in corsia box: era un cambio pilota?</span>
+    <button class="btn small primary" onclick="gpsRispostaCambio(true)">Sì, cambio</button>
+    <button class="btn small" onclick="gpsRispostaCambio(false)">No</button>
+  </div>
   <div class="tabs box-tabs" id="boxTabs">
     <button class="tab" id="boxTabBtn_comm" onclick="setBoxTab('comm')">Comm</button>
     <button class="tab on" id="boxTabBtn_gara" onclick="setBoxTab('gara')">Gara</button>
@@ -576,18 +581,18 @@
   <div class="mp-panel" id="mpPannello"></div>
   <input type="file" id="mpFile" accept=".json,application/json,text/plain" hidden onchange="mpCircuitoDaFile(this)">
 </div>
-<script src="js/core.js?v=47"></script>
+<script src="js/core.js?v=51"></script>
 <script src="js/doppiobox.js?v=47"></script>
 <script src="js/push.js?v=47"></script>
 <script src="js/connection.js?v=48"></script>
 <script src="js/autoview.js?v=50"></script>
 <script src="js/fuel.js?v=47"></script>
-<script src="js/boxview.js?v=47"></script>
+<script src="js/boxview.js?v=51"></script>
 <script src="js/timing.js?v=47"></script>
 <script src="js/passo.js?v=47"></script>
 <script src="js/strategia.js?v=47"></script>
 <script src="js/cruscotto.js?v=50"></script>
-<script src="js/gps.js?v=48"></script>
+<script src="js/gps.js?v=51"></script>
 <script src="js/lancio.js?v=48"></script>
 <script src="js/mappa.js?v=48"></script>
 <script src="js/race.js?v=47"></script>

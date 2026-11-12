@@ -115,6 +115,24 @@ function notificaAndroid(titolo, testo, sempre){
   try{ if(window.PitCommAndroid && (sempre || document.hidden)) window.PitCommAndroid.notifica(titolo, String(testo || '')); }catch(e){}
 }
 
+// Notifica del browser (PC o telefono senza l'app Android) per un evento locale del box, come "era un cambio pilota?":
+// compare solo se la pagina non e' in primo piano (altra scheda, altra finestra, schermo spento). Serve il permesso del browser,
+// che si chiede al primo tocco nel box (chiediPermessoNotifiche).
+function notificaLocale(titolo, testo, tag){
+  try{
+    if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    if(!(document.hidden || !document.hasFocus())) return;
+    const opz = { body: String(testo || ''), tag: tag || 'pitcomm', renotify: true, requireInteraction: true, icon: '/icons/icon-192.png', vibrate: [300, 100, 300] };
+    const diretta = () => { try{ new Notification(titolo, opz); }catch(e){} };
+    if(navigator.serviceWorker && navigator.serviceWorker.ready) navigator.serviceWorker.ready.then((r) => r.showNotification(titolo, opz)).catch(diretta);
+    else diretta();
+  }catch(e){}
+}
+
+function chiediPermessoNotifiche(){
+  try{ if(typeof Notification !== 'undefined' && Notification.permission === 'default') Notification.requestPermission(); }catch(e){}
+}
+
 // Bip breve (usato quando la sirena e' spenta).
 function playAlertBeep(){
   const ctx = getAudio();

@@ -517,6 +517,7 @@ function gpsControllaFermo(){
     try{ if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }catch(e){}
     try{ if(typeof playAlertBeep === 'function') playAlertBeep(); }catch(e){}
     if(typeof notificaAndroid === 'function') notificaAndroid('PitComm', 'Auto ferma in corsia box: era un cambio pilota?');
+    notificaLocale('PitComm: cambio pilota?', 'Auto ferma in corsia box: era un cambio pilota?', 'pitcomm-cambio');
     gpsRender();
   }
 }
@@ -538,6 +539,7 @@ function gpsDomandaRemota(d){
   try{ if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }catch(e){}
   try{ if(typeof playAlertBeep === 'function') playAlertBeep(); }catch(e){}
   if(typeof notificaAndroid === 'function') notificaAndroid('PitComm', 'Auto ferma in corsia box: era un cambio pilota?');
+    notificaLocale('PitComm: cambio pilota?', 'Auto ferma in corsia box: era un cambio pilota?', 'pitcomm-cambio');
   gpsRender();
 }
 
@@ -626,6 +628,22 @@ function gpsTurnoTesto(){
   return t;
 }
 
+// Domanda "era un cambio pilota?" aperta: fascia rossa in cima a OGNI scheda, titolo della finestra che lampeggia e bip ripetuto
+// ogni 8 s finche' non si risponde (sul PC la finestra puo' essere dietro altre: il titolo si vede nella barra delle applicazioni).
+let gpsAvvisoBip = 0, gpsTitoloOriginale = null;
+function gpsAvvisoCambio(aperta){
+  const av = $('cambioAvviso');
+  if(av){
+    av.hidden = !aperta;
+    if(aperta && $('gpsDomandaTesto') && $('cambioAvvisoTesto')) $('cambioAvvisoTesto').textContent = $('gpsDomandaTesto').textContent;
+  }
+  if(aperta){
+    if(gpsTitoloOriginale == null) gpsTitoloOriginale = document.title;
+    document.title = (Math.floor(Date.now() / 1000) % 2 ? '\u26a0 CAMBIO PILOTA? ' : '\u25b6 ') + gpsTitoloOriginale;
+    if(Date.now() - gpsAvvisoBip > 8000){ gpsAvvisoBip = Date.now(); try{ playAlertBeep(); }catch(e){} }
+  } else if(gpsTitoloOriginale != null){ document.title = gpsTitoloOriginale; gpsTitoloOriginale = null; gpsAvvisoBip = 0; }
+}
+
 // Conta il tempo del turno solo mentre l'auto e' in pista (ai box e in corsia non si conta).
 let gpsTurnoUltimo = 0, gpsTurnoSalvato = 0;
 function gpsTurnoTick(){
@@ -647,7 +665,9 @@ function gpsTurnoTick(){
 function gpsRender(){
   if(role !== 'box') return;
   const tb = $('boxTabBtn_gara');
-  if(tb) tb.classList.toggle('tab-avviso', !!(gpsCfg.on && gpsChiede));
+  const aperta = !!(gpsCfg.on && gpsChiede);
+  if(tb) tb.classList.toggle('tab-avviso', aperta);
+  gpsAvvisoCambio(aperta);
   if($('turnoTesto')) $('turnoTesto').textContent = gpsTurnoTesto();
   if($('stintMaxInput') && document.activeElement !== $('stintMaxInput')) $('stintMaxInput').value = gpsStintMax() || '';
   const dom = $('gpsDomanda');

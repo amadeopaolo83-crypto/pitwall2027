@@ -291,3 +291,6 @@ document.addEventListener('click', (e) => {
     el._premutoT = setTimeout(() => el.classList.remove('premuto'), 1000);
   }catch(err){}
 }, true);
+
+// Le notifiche del browser (domanda "cambio pilota?") hanno bisogno del permesso: si chiede una volta, al primo tocco nel box.
+document.addEventListener('pointerdown', () => { try{ if(role === 'box') chiediPermessoNotifiche(); }catch(e){} }, { once: true, capture: true });

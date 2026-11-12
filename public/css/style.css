@@ -275,6 +275,9 @@
   .btn.small{padding:8px 10px;font-size:12px;}
   #boxView .premuto{background:var(--yellow)!important;color:#0B0D0F!important;border-color:var(--yellow)!important;box-shadow:0 0 0 4px rgba(255,200,0,.45)!important;transform:scale(.97);}
   #boxView label.toggle.premuto{box-shadow:0 0 0 4px rgba(255,200,0,.6)!important;border-radius:20px;}
+  .cambio-avviso{position:sticky;top:0;z-index:60;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin-bottom:8px;background:#c62828;color:#fff;font-weight:700;border-radius:10px;}
+  .cambio-avviso[hidden]{display:none;}
+  .cambio-avviso span{flex:1 1 180px;}
   .box-tabs .tab.tab-avviso{animation:tabLampeggia .8s steps(2,start) infinite;}
   @keyframes tabLampeggia{50%{background:var(--red,#e5484d);color:#fff;}}
   .btn.sent-confirm{background:var(--green)!important;color:#0B0D0F!important;border-color:var(--green)!important;}

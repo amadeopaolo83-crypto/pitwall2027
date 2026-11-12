@@ -105,21 +105,43 @@ srv.listen(8797, async () => {
   V.ok('stint: avviso al raggiungimento', st.aMax.some((t) => /Stint massimo raggiunto/.test(t)), st.aMax);
   V.ok('stint: il turno mostra "SUPERATO"', /SUPERATO/.test(st.testo), st.testo);
 
-  // 7. auto ferma in corsia: la domanda suona, la scheda Gara lampeggia, resta visibile
-  const dom = await pg.evaluate(() => {
+  // 7. auto ferma in corsia: la domanda suona, la scheda Gara lampeggia, fascia rossa su ogni scheda, titolo, notifica del browser
+  const dom = await pg.evaluate(async () => {
     let bip = 0; const orig = window.playAlertBeep; window.playAlertBeep = () => { bip++; };
+    const notifiche = [];
+    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: { ready: Promise.resolve({ showNotification: (t, o) => notifiche.push([t, o.body, o.requireInteraction]) }) } });
+    window.Notification = { permission: 'granted' };
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });      // finestra dietro le altre
+    const titolo0 = document.title;
     gpsApplicaConfig({ on: true, box: { lat: 45, lng: 9 }, refuel: { lat: 45, lng: 9.01 } });
     gpsUltima = { lat: 45, lng: 9, acc: 3 }; gpsUltimaBuona = Date.now(); gpsCfg.fermoS = 5;
     gpsAncora = { lat: 45, lng: 9 }; gpsAncoraDa = Date.now() - 10000; gpsInCorsia = true; gpsChiede = false; gpsCambioFatto = false; boxPrimario = true;
     gpsControllaFermo();
+    await new Promise((r) => setTimeout(r, 50));
     const r = { chiede: gpsChiede, bip, lampeggia: document.getElementById('boxTabBtn_gara').classList.contains('tab-avviso'), visibile: !document.getElementById('gpsDomanda').hidden, inTurno: !!document.querySelector('#turnoCard #gpsDomanda') };
-    gpsRispostaCambio(false); gpsRender();
+    r.notifiche = notifiche.slice();
+    const fascia = document.getElementById('cambioAvviso');
+    r.fascia = !fascia.hidden && getComputedStyle(fascia).display !== 'none';
+    r.fasciaTesto = fascia.textContent.replace(/\s+/g, ' ').trim();
+    ['comm', 'passo', 'settings', 'timing', 'gara'].forEach((t) => { setBoxTab(t); gpsRender(); r['fascia_' + t] = !fascia.hidden; });
+    r.titolo = document.title !== titolo0 && /CAMBIO PILOTA/.test(document.title) || /CAMBIO PILOTA|\u25b6/.test(document.title);
+    const b0 = bip; gpsAvvisoBip = Date.now() - 9000; gpsRender(); r.bipRipetuto = bip === b0 + 1;
+    gpsAvvisoBip = Date.now(); gpsRender(); r.bipNonSubito = bip === b0 + 1;
+    // pagina in primo piano: niente notifica del browser (basta la fascia)
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+    const n0 = notifiche.length; document.hasFocus = () => true; notificaLocale('x', 'y'); await new Promise((q) => setTimeout(q, 30)); r.primoPiano = notifiche.length === n0;
+    document.getElementById('cambioAvviso').querySelector('button:last-of-type').click();   // "No"
     r.dopo = document.getElementById('boxTabBtn_gara').classList.contains('tab-avviso');
+    r.fasciaDopo = document.getElementById('cambioAvviso').hidden; r.titoloDopo = document.title === titolo0;
     window.playAlertBeep = orig;
     return r;
   });
-  V.ok('auto ferma in corsia: domanda aperta, bip, scheda Gara lampeggia, domanda nel riquadro Turno pilota', dom.chiede && dom.bip === 1 && dom.lampeggia && dom.visibile && dom.inTurno, dom);
-  V.ok('dopo la risposta la scheda smette di lampeggiare', dom.dopo === false, dom);
+  V.ok('auto ferma in corsia: domanda aperta, bip, scheda Gara lampeggia, domanda nel riquadro Turno pilota', dom.chiede && dom.bip >= 1 && dom.lampeggia && dom.visibile && dom.inTurno, dom);
+  V.ok('notifica del browser (PC) con la finestra dietro le altre', dom.notifiche.length === 1 && /cambio pilota/i.test(dom.notifiche[0][0] + dom.notifiche[0][1]) && dom.notifiche[0][2] === true, dom.notifiche);
+  V.ok('fascia rossa "era un cambio pilota?" su tutte le schede, con Si/No', dom.fascia && dom.fascia_comm && dom.fascia_passo && dom.fascia_settings && dom.fascia_timing && dom.fascia_gara && /cambio pilota/i.test(dom.fasciaTesto), dom);
+  V.ok('titolo della finestra lampeggia e il bip si ripete (non di continuo)', dom.titolo && dom.bipRipetuto && dom.bipNonSubito, dom);
+  V.ok('con la pagina in primo piano niente notifica del browser', dom.primoPiano, dom);
+  V.ok('dopo la risposta: scheda, fascia e titolo tornano normali', dom.dopo === false && dom.fasciaDopo === true && dom.titoloDopo === true, dom);
 
   // 8. vista auto: distacco lungo arrotondato al decimo, quello corto com'e'
   const gl = await pg.evaluate(() => { renderTiming({ position: 3, gapAhead: '+3.412', gapBehind: '-1:11.577' });
