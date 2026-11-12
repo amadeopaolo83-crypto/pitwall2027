@@ -80,10 +80,10 @@ const log = (...a) => console.log(ora(), ...a);
   await box.waitForFunction(() => gpsCfg.traguardo && gpsCfg.corsia && gpsCfg.box, null, { timeout: 5000 });
   await foto(box, '01-box-circuito-caricato');
   await box.evaluate(() => mappaChiudi());
-  // timing: Nostro, indirizzo del finto ponte, numero 77
+  // timing: Nostro, indirizzo del finto ponte, numero 1 (quello predefinito del simulatore)
   await box.evaluate(() => setBoxTab('timing'));
   await tocca(box, '#segPonte', 'Distacchi: Nostro');
-  await box.fill('#ponteUrl', 'https://pitcomm.sim/PROVA'); await box.fill('#ponteNumber', '77');
+  await box.fill('#ponteUrl', 'https://pitcomm.sim/PROVA'); await box.fill('#ponteNumber', '1');
   await tocca(box, '#timingPontePane button.primary', 'Collega (ponte)');
   // timer: partenza e gara
   await box.fill('#timerStartM', String(Math.floor(LANCIO / 60))); await box.fill('#timerStartS', String(LANCIO % 60));
@@ -314,6 +314,14 @@ const log = (...a) => console.log(ora(), ...a);
   V.ok('colori: verde e giallo visti nella gara', conteggio.assoluta.verde + conteggio.categoria.verde > 0 && conteggio.assoluta.giallo + conteggio.categoria.giallo > 0, conteggio);
   V.ok('colori: Assoluta e Categoria mostrano colori', conteggio.assoluta.verde + conteggio.assoluta.giallo > 0 && conteggio.categoria.verde + conteggio.categoria.giallo > 0, conteggio);
   V.ok('colori: rivali che cambiano ripartono da bianco (casi visti)', conteggio.assoluta.nuovo + conteggio.categoria.nuovo > 4, conteggio);
+  // gruppo compatto (predefinito nel simulatore): la nostra auto resta nel mezzo, i distacchi cambiano di poco
+  const posGara = campioni.filter((c) => c.t > (LANCIO + 120) * 1000 && c.auto.vista === 'assoluta' && /^\d+$/.test(c.auto.pos)).map((c) => Number(c.auto.pos));
+  const nelMezzo = posGara.filter((p) => p >= 3 && p <= 11).length;
+  V.ok('gruppo compatto: la nostra auto (n. 1) sta tra il 3° e l\'11° posto per almeno il 60% della gara', posGara.length > 20 && nelMezzo >= 0.6 * posGara.length, { letture: posGara.length, nelMezzo, posti: [...new Set(posGara)].sort((a, b) => a - b) });
+  const delta = []; let pr = null;
+  for (const r of timing) { if (pr && r.vista === pr.vista && r.aNum === pr.aNum && r.aS != null && pr.aS != null && r.aS !== pr.aS) delta.push(Math.abs(r.aS - pr.aS)); pr = r; }
+  delta.sort((x, y) => x - y);
+  console.log('Distacco da chi sta davanti, stesso rivale: ' + delta.length + ' cambi, mediana ' + (delta.length ? delta[delta.length >> 1].toFixed(2) : '-') + ' s, sotto 2 s: ' + delta.filter((x) => x < 2).length);
   // tasti del box
   V.ok('ogni tasto del box si illumina per 1 secondo', luci.length > 0 && luci.every((l) => l.subito && !l.dopo), luci);
   // errori

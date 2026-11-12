@@ -50,7 +50,7 @@ Provato solo con finti socket: il giro completo con il server vero va ancora fat
 
 ### Timing finto (SIM_PONTE=1)
 Su Render (Pitwall2027, solo la copia di prova) aggiungi la variabile `SIM_PONTE=1`. Nel simulatore lascia "timing finto" acceso: al via manda
-la corsa al server. Nel box: Distacchi → Nostro → indirizzo `https://pitcomm.sim/CODICE-SQUADRA` e numero 77 (o quello messo nel simulatore).
+la corsa al server. Nel box: Distacchi → Nostro → indirizzo `https://pitcomm.sim/CODICE-SQUADRA` e numero 1 (o quello messo nel simulatore; "gruppo compatto" acceso = la nostra auto resta a meta' del gruppo e i distacchi cambiano di poco).
 Scenario: `sc dal-giro quanti-giri [velocita'%]` = giri lenti per tutti (tutti rallentano, anche la nostra auto), `pausa dopo-giri secondi` = gara ferma; `ritmo dal-giro quanti-giri velocita'%` = cambia solo il nostro ritmo (tutti fermi sul traguardo).
 Gli altri sono piloti virtuali: stesso formato del ponte vero, solo tempi.
 - `gara-e2e.js`: gara completa a tempo reale (~47 min, non in `tutte.js`): server vero con `SIM_PONTE=1`, box + `/sim.html` +

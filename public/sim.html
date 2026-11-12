@@ -22,17 +22,17 @@ button.r{background:#7a2a2a;border-color:#b04444} .riga{display:flex;gap:8px;fle
 5 corsia 70
 5 box 90
 2
-ritmo 3 4 112
-ritmo 8 4 85
+ritmo 3 4 103
+ritmo 8 4 97
 sc 10 2 55
 pausa 7 120</textarea>
- <div class="riga"><label>Sfasamento E <input id="dx" type="number" value="0" step="0.5" style="width:70px"> m</label><label>N <input id="dy" type="number" value="0" step="0.5" style="width:70px"> m</label><label>Giro <input id="giro" type="number" value="100" min="0" style="width:60px"> s (0 = non tarare)</label><label>Seme <input id="seme" type="number" value="1" style="width:60px"></label><label><input type="checkbox" id="rumore" checked> rumore GPS</label><label><input type="checkbox" id="timing" checked> timing finto</label><label>Nostro n. <input id="numero" value="77" size="4"></label></div></fieldset>
+ <div class="riga"><label>Sfasamento E <input id="dx" type="number" value="0" step="0.5" style="width:70px"> m</label><label>N <input id="dy" type="number" value="0" step="0.5" style="width:70px"> m</label><label>Giro <input id="giro" type="number" value="100" min="0" style="width:60px"> s (0 = non tarare)</label><label>Seme <input id="seme" type="number" value="1" style="width:60px"></label><label><input type="checkbox" id="rumore" checked> rumore GPS</label><label><input type="checkbox" id="timing" checked> timing finto</label><label>Nostro n. <input id="numero" value="1" size="4"></label><label title="Gli altri hanno un ritmo vicino al nostro (meta' piu' veloci, meta' piu' lenti), partono meta' davanti e meta' dietro e si fermano spesso come noi: la nostra auto resta nel mezzo e i distacchi cambiano di poco."><input type="checkbox" id="centro" checked> gruppo compatto (noi a metà)</label></div></fieldset>
 <div class="riga"><label>Ritmo nel lancio <input id="ritmo" type="range" min="0.5" max="1.15" step="0.01" value="1" style="width:200px"> <b id="ritmoVal">100%</b></label></div>
 <div class="riga"><button class="p" id="via">▶ Avvia</button><button id="salta" title="Salta al prossimo pit (o alla fine del lancio)">⏭ Salta</button><button class="r" id="stop">■ Ferma</button><span id="stato"></span></div>
 <canvas id="mappa" width="720" height="360"></canvas>
 <div id="log"></div>
 <script src="/socket.io/socket.io.js"></script>
 <script>if(!window.io){document.write('<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"><\/script>');}</script>
-<script src="/js/pista.js"></script>
-<script src="/js/sim.js"></script>
+<script src="/js/pista.js?v=2"></script>
+<script src="/js/sim.js?v=2"></script>
 </body></html>

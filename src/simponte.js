@@ -25,15 +25,21 @@ const eNum = (x, min, max) => typeof x === "number" && Number.isFinite(x) && x >
 // I giri degli altri: tempi di passaggio sul traguardo, uno dopo l'altro, fino a "fino" secondi.
 function generaRivale(i, cfg, fino) {
   const r = casuale(cfg.seme * 131 + i * 17 + 3);
-  const base = cfg.giroS * (0.95 + 0.11 * r.uni());           // ritmo proprio: da un po' piu' veloce a un po' piu' lento di noi
-  const stint = () => 7 + Math.floor(r.uni() * 4);            // 7-10 giri tra due soste
-  const perdita = 24 + r.uni() * 22;                          // secondi persi in una sosta normale
+  // Gruppo compatto (cfg.centro, scelto nel simulatore): la nostra auto sta nel mezzo. Meta' degli altri un po' piu' veloce e
+  // meta' un po' piu' lenta (ritmi da -2% a +2%, vicini fra loro), poco rumore sul giro, partenza lanciata con meta' davanti e
+  // meta' dietro di noi, soste con la stessa frequenza delle nostre: i distacchi cambiano di poco, giro per giro.
+  const c = cfg.centro ? cfg.centro : null, mezzo = c ? (c.passo.length - 1) / 2 : 0;
+  const base = c ? cfg.giroS * (1 + 0.02 * (c.passo[i] - mezzo) / (mezzo || 1)) : cfg.giroS * (0.95 + 0.11 * r.uni());   // ritmo proprio
+  const rumore = c ? 0.003 : 0.008, primoGiro = c ? 1 : 1.06;
+  const stint = () => c ? 5 + Math.floor(r.uni() * 3) : 7 + Math.floor(r.uni() * 4);   // giri tra due soste
+  const perdita = c ? 12 + r.uni() * 10 : 24 + r.uni() * 22;  // secondi persi in una sosta normale (corsia e uscita)
   const guasto = i === 4;                                     // uno si ferma a lungo una volta
-  let prossimaSosta = 6 + Math.floor(r.uni() * 5), giro = 0, t = i * 0.4;   // schieramento: pochi decimi tra uno e l'altro
+  let prossimaSosta = c ? 5 + Math.floor(r.uni() * 3) : 6 + Math.floor(r.uni() * 5), giro = 0;
+  let t = c ? Math.max(0, cfg.partenza + (c.griglia[i] - mezzo) * 0.5) : i * 0.4;   // schieramento: pochi decimi tra uno e l'altro
   const passaggi = [], giri = [], soste = [];
   while (t < fino && giro < 400) {
     giro++;
-    let durata = base * (1 + 0.008 * r.gauss()) * (giro === 1 ? 1.06 : 1);
+    let durata = base * (1 + rumore * r.gauss()) * (giro === 1 ? primoGiro : 1);
     const inizio = t;
     const sc = cfg.finestre.find((w) => inizio >= w.da && inizio < w.a);
     if (sc) durata /= sc.fattore;
@@ -41,7 +47,7 @@ function generaRivale(i, cfg, fino) {
     if (giro >= prossimaSosta) {
       // tipo di sosta: rifornimento breve, cambio pilota (piu' lungo) o rifornimento lungo (fino a ~3 minuti)
       const q = r.uni();
-      const tipo = q < 0.55 ? "rifornimento" : q < 0.85 ? "cambio" : "lungo";
+      const tipo = q < 0.55 ? "rifornimento" : (q < 0.85 || c) ? "cambio" : "lungo";   // gruppo compatto: niente soste lunghe
       const fermo = tipo === "rifornimento" ? 25 + r.uni() * 20 : tipo === "cambio" ? 60 + r.uni() * 40 : 120 + r.uni() * 60;
       sosta = (sc ? 0.55 : 1) * perdita * (0.9 + 0.2 * r.uni()) + fermo;
       if (guasto && !soste.length) sosta += 110;
@@ -70,7 +76,14 @@ function avvia(corpo) {
   if (!finestre || !pause) return { ok: false, error: "safety o pause non valide" };
   if (!eNum(corpo.tGara, -7200, 1e6)) return { ok: false, error: "tempo di gara non valido" };
   const nAuto = eNum(corpo.nAuto, 2, 40) ? Math.floor(corpo.nAuto) : 14;
-  const cfg = { numero, giroS: corpo.giroS, passaggi: corpo.passaggi.slice(), finestre: finestre.map((w) => ({ da: w.da, a: w.a, fattore: w.fattore })), pause: pause.map((p) => ({ da: p.da, durata: p.durata })), seme: eNum(corpo.seme, 0, 1e9) ? Math.floor(corpo.seme) : 1 };
+  // gruppo compatto: due ordini casuali ripetibili (ritmo e posto in griglia) per gli altri; la nostra partenza (secondi dallo zero)
+  let centro = null;
+  if (corpo.centro === true) {
+    const r = casuale((eNum(corpo.seme, 0, 1e9) ? Math.floor(corpo.seme) : 1) * 7919 + 11), n = nAuto - 1;
+    const mescola = () => { const a = Array.from({ length: n }, (_, k) => k); for (let k = n - 1; k > 0; k--) { const j = Math.floor(r.uni() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; };
+    centro = { passo: mescola(), griglia: mescola() };
+  }
+  const cfg = { centro, partenza: eNum(corpo.partenza, 0, 600) ? corpo.partenza : 0, numero, giroS: corpo.giroS, passaggi: corpo.passaggi.slice(), finestre: finestre.map((w) => ({ da: w.da, a: w.a, fattore: w.fattore })), pause: pause.map((p) => ({ da: p.da, durata: p.durata })), seme: eNum(corpo.seme, 0, 1e9) ? Math.floor(corpo.seme) : 1 };
   const ultimo = cfg.passaggi.length ? cfg.passaggi[cfg.passaggi.length - 1] : 0;
   const fino = Math.max(600, ultimo + 240);
   const rivali = [];

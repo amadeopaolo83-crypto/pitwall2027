@@ -87,7 +87,8 @@
     if (!$('timing').checked) return Promise.resolve();
     const ritardo = conCorsa ? raceT0 - zeroS : 0, d = (x) => x + ritardo;
     const corpo = {
-      evento: codiceOra, numero: $('numero').value.trim() || '77', giroS: parseFloat($('giro').value) || 100,
+      evento: codiceOra, numero: $('numero').value.trim() || '1', giroS: parseFloat($('giro').value) || 100,
+      centro: !!($('centro') && $('centro').checked), partenza: Math.max(0, ritardo),
       passaggi: conCorsa ? corsa.passaggi.map(d) : [], finestre: conCorsa ? corsa.finestre.map((w) => ({ da: d(w.da), a: d(w.a), fattore: w.fattore })) : [],
       pause: conCorsa ? corsa.pauseT.map((q) => ({ da: d(q.da), durata: q.durata })) : [], tGara: tGaraOra(tr), seme: parseInt($('seme').value, 10) || 1, nAuto: 14,
     };
