@@ -55,6 +55,9 @@ function renderTiming(t){
   if($('timingPos')) $('timingPos').textContent = (pos ?? '—');
   if($('timingGapAhead')) $('timingGapAhead').textContent = gapA || '—';
   if($('timingGapBehind')) $('timingGapBehind').textContent = gapB || '—';
+  // Distacchi lunghi (es. "-1:11.577"): carattere piu' piccolo, cosi' stanno nel riquadro colorato. Quelli corti restano come prima.
+  if($('timingGapAhead')) $('timingGapAhead').classList.toggle('gap-lungo', String(gapA || '').length > 7);
+  if($('timingGapBehind')) $('timingGapBehind').classList.toggle('gap-lungo', String(gapB || '').length > 7);
   // I nomi si riscrivono sempre, anche quando sono vuoti: se restassero quelli
   // di prima indicherebbero l'avversario sbagliato accanto a un distacco nuovo,
   // che e' peggio che non scrivere niente.

@@ -121,6 +121,12 @@ srv.listen(8797, async () => {
   V.ok('auto ferma in corsia: domanda aperta, bip, scheda Gara lampeggia, domanda nel riquadro Turno pilota', dom.chiede && dom.bip === 1 && dom.lampeggia && dom.visibile && dom.inTurno, dom);
   V.ok('dopo la risposta la scheda smette di lampeggiare', dom.dopo === false, dom);
 
+  // 8. vista auto: distacco lungo con carattere piu' piccolo, corto invariato
+  const gl = await pg.evaluate(() => { renderTiming({ position: 3, gapAhead: '+3.412', gapBehind: '-1:11.577' });
+    const a = document.getElementById('timingGapAhead'), b = document.getElementById('timingGapBehind');
+    return { corto: a.classList.contains('gap-lungo'), lungo: b.classList.contains('gap-lungo') }; });
+  V.ok('auto: distacco lungo (-1:11.577) piu\' piccolo, quello corto (+3.412) come prima', gl.lungo === true && gl.corto === false, gl);
+
   V.ok('nessun errore nella pagina', C.erroriVeri(errs).length === 0, errs);
   await b.close(); srv.close(); V.fine();
 });
