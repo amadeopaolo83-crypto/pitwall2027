@@ -121,11 +121,15 @@ srv.listen(8797, async () => {
   V.ok('auto ferma in corsia: domanda aperta, bip, scheda Gara lampeggia, domanda nel riquadro Turno pilota', dom.chiede && dom.bip === 1 && dom.lampeggia && dom.visibile && dom.inTurno, dom);
   V.ok('dopo la risposta la scheda smette di lampeggiare', dom.dopo === false, dom);
 
-  // 8. vista auto: distacco lungo con carattere piu' piccolo, corto invariato
+  // 8. vista auto: distacco lungo arrotondato al decimo, quello corto com'e'
   const gl = await pg.evaluate(() => { renderTiming({ position: 3, gapAhead: '+3.412', gapBehind: '-1:11.577' });
-    const a = document.getElementById('timingGapAhead'), b = document.getElementById('timingGapBehind');
-    return { corto: a.classList.contains('gap-lungo'), lungo: b.classList.contains('gap-lungo') }; });
-  V.ok('auto: distacco lungo (-1:11.577) piu\' piccolo, quello corto (+3.412) come prima', gl.lungo === true && gl.corto === false, gl);
+    const r = { corto: document.getElementById('timingGapAhead').textContent, lungo: document.getElementById('timingGapBehind').textContent };
+    r.prove = ['-1:11.577', '+1:59.96', '-1:05.04', '+12.345', '+123.456', '+1 giro', '-0.512', '+10:00.049'].map((x) => gapCorto(x));
+    r.classe = document.getElementById('timingGapBehind').className;
+    return r; });
+  V.ok('auto: distacco lungo arrotondato al decimo (-1:11.577 -> -1:11.6), corto invariato (+3.412)', gl.lungo === '-1:11.6' && gl.corto === '+3.412', gl);
+  V.ok('auto: arrotondamenti e casi limite', JSON.stringify(gl.prove) === JSON.stringify(['-1:11.6', '+2:00.0', '-1:05.0', '+12.345', '+2:03.5', '+1 giro', '-0.512', '+10:00.0']), gl.prove);
+  V.ok('auto: niente carattere piu\' piccolo', !/gap-lungo/.test(gl.classe) && gl.classe === 'gap', gl.classe);
 
   V.ok('nessun errore nella pagina', C.erroriVeri(errs).length === 0, errs);
   await b.close(); srv.close(); V.fine();

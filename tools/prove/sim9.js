@@ -57,8 +57,31 @@ srv.listen(8799, async () => {
     role = 'box'; crRenderCategoria(); crRenderCruscotto();
     return { riga: document.querySelector('#catPosto .cat-noi').innerText, cruscotto: $('crCruscotto').innerText };
   });
-  V.ok('scheda Gara, riga NOI: giro e ultimo giro', /giro 12/.test(noi.riga) && /ultimo 1:41\.2/.test(noi.riga), noi.riga);
-  V.ok('Cruscotto: prima riga NOI con giro e ultimo', /NOI: giro 12 · ultimo 1:41\.2/.test(noi.cruscotto), noi.cruscotto.slice(0, 120));
+  V.ok('scheda Gara, riga NOI: giri e ultimo giro', /giri 12/.test(noi.riga) && /ultimo 1:41\.2/.test(noi.riga), noi.riga);
+  V.ok('Cruscotto: prima riga NOI con giro e ultimo', /NOI: giri 12 · ultimo 1:41\.2/.test(noi.cruscotto), noi.cruscotto.slice(0, 120));
+  // giri dalla PARTENZA: il riscaldamento (giri prima dello zero del timer di gara) non conta
+  const gg = await pg.evaluate(() => {
+    const ora = nowSync(), r = {};
+    passoRis = { numero: '77', mio: { giri: 15, ultimo: 101.234, best: 100.9, m: {} }, auto: {} };
+    const timer = (phase, trascorso, run) => ({ phase, startSeconds: 300, startRemaining: 0, startRunning: false, startUpdatedAt: ora, raceSeconds: 2400, raceRemaining: 2400 - trascorso, raceRunning: run, raceUpdatedAt: ora, speed: 1 });
+    // 3 giri di riscaldamento registrati prima dello zero, poi 12 di gara
+    passoLocale = { numero: '77', giri: [1, 2, 3].map((n) => ({ n, t: 100, ts: ora - 1500000 - (4 - n) * 100000, v: true, s: 0 })).concat(Array.from({ length: 12 }, (_, k) => ({ n: 4 + k, t: 100, ts: ora - 1200000 + k * 100000, v: true, s: 0 }))) };
+    try{ localStorage.removeItem('pc_gara_inizio'); }catch(e){}
+    lastTimerState = timer('race', 1500, true);
+    r.race = crNoiTxt(); r.n = crGiriGara();
+    lastTimerState = timer('start', 0, false);
+    r.lancio = crNoiTxt();
+    lastTimerState = timer('race', 1500, true); crGiriGara();               // ricorda l'inizio
+    lastTimerState = timer('race', 1500, false);                            // gara in pausa: l'inizio non scivola avanti
+    r.pausa = crGiriGara();
+    lastTimerState = null; passoLocale = { numero: null, giri: [] };
+    r.senzaTimer = crGiriGara();
+    return r;
+  });
+  V.ok('NOI: i giri contano dalla partenza (15 del timing - 3 di riscaldamento = 12)', gg.n === 12 && /giri 12 · ultimo 1:41\.2/.test(gg.race), gg);
+  V.ok('NOI: nel lancio "giri 0"', /giri 0 /.test(gg.lancio), gg.lancio);
+  V.ok('NOI: gara in pausa, il conto non cambia', gg.pausa === 12, gg.pausa);
+  V.ok('NOI: senza timer o senza storico resta il conto del live timing', gg.senzaTimer === 15, gg.senzaTimer);
   await pg.evaluate(() => { passoRis = null; crRenderCategoria(); crRenderCruscotto(); });
   V.ok('senza dati del passo: niente scritte false', await pg.evaluate(() => !/giro/.test(document.querySelector('#catPosto .cat-noi').innerText) && !/NOI:/.test($('crCruscotto').innerText)));
   await pg.evaluate(() => strategiaRicevi(null)); await pg.evaluate(() => strategiaRicevi({}));

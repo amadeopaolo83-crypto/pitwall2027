@@ -117,7 +117,6 @@
      (davanti si riduce, dietro aumenta) e giallo se peggiora. */
   /* il colore e' del rettangolo che contiene il distacco, non delle cifre */
   .timing-strip .gap{color:var(--text);font-size:clamp(26px,4.4vw,38px);align-self:stretch;border-radius:12px;background:transparent;transition:background .3s,color .3s;}
-  .timing-strip .gap.gap-lungo{font-size:clamp(20px,3.4vw,30px);}
   .timing-strip .gap.g-up{background:var(--green);color:#0B0D0F;}
   .timing-strip .gap.g-down{background:var(--yellow);color:#0B0D0F;}
   .timing-strip .lbl{font-size:13px;letter-spacing:.1em;color:var(--muted);}
@@ -194,7 +193,6 @@
   }
   #autoView.layout-tablet .timing-strip .cell{gap:min(.6vh,6px);}
   #autoView.layout-tablet .timing-strip .gap{font-size:min(5vw,8vh);}
-  #autoView.layout-tablet .timing-strip .gap.gap-lungo{font-size:min(3.9vw,6.2vh);}
   #autoView.layout-tablet .timing-strip .pos{font-size:min(7vw,11vh);}
   #autoView.layout-tablet .timing-strip .lbl{font-size:min(1.3vw,2.2vh);height:auto;line-height:1.2;}
   #autoView.layout-tablet .timing-strip .who{font-size:min(1.9vw,3.2vh);}

@@ -42,6 +42,18 @@ function descriviRivale(numero, nome){
 let timingView = 'assoluta';
 let lastTiming = null;
 
+// Distacco troppo lungo per il riquadro (es. "-1:11.577"): si arrotonda al decimo ("-1:11.6"). I distacchi corti restano
+// com'e' arrivato (i colori si calcolano sul valore intero, qui cambia solo la scritta).
+function gapCorto(txt){
+  const t = String(txt == null ? '' : txt).trim();
+  if(t.length <= 7) return t;
+  const m = /^([+\-\u2212]?)(?:(\d+):)?(\d+)\.(\d+)$/.exec(t);
+  if(!m) return t;
+  const tot = Math.round(((Number(m[2] || 0) * 60) + Number(m[3] + '.' + m[4])) * 10) / 10;
+  const mm = Math.floor(tot / 60), ss = tot - mm * 60;
+  return m[1] + (mm ? mm + ':' + (ss < 10 ? '0' : '') + ss.toFixed(1) : ss.toFixed(1));
+}
+
 function renderTiming(t){
   if(!t) return;
   lastTiming = t;
@@ -53,11 +65,8 @@ function renderTiming(t){
   const gapA = cat ? t.catGapAhead : t.gapAhead;
   const gapB = cat ? t.catGapBehind : t.gapBehind;
   if($('timingPos')) $('timingPos').textContent = (pos ?? '—');
-  if($('timingGapAhead')) $('timingGapAhead').textContent = gapA || '—';
-  if($('timingGapBehind')) $('timingGapBehind').textContent = gapB || '—';
-  // Distacchi lunghi (es. "-1:11.577"): carattere piu' piccolo, cosi' stanno nel riquadro colorato. Quelli corti restano come prima.
-  if($('timingGapAhead')) $('timingGapAhead').classList.toggle('gap-lungo', String(gapA || '').length > 7);
-  if($('timingGapBehind')) $('timingGapBehind').classList.toggle('gap-lungo', String(gapB || '').length > 7);
+  if($('timingGapAhead')) $('timingGapAhead').textContent = gapCorto(gapA) || '—';
+  if($('timingGapBehind')) $('timingGapBehind').textContent = gapCorto(gapB) || '—';
   // I nomi si riscrivono sempre, anche quando sono vuoti: se restassero quelli
   // di prima indicherebbero l'avversario sbagliato accanto a un distacco nuovo,
   // che e' peggio che non scrivere niente.
