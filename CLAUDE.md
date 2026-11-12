@@ -41,6 +41,8 @@ box e auto (PWA + server Node + involucro Android). Questo repository (`Pitwall2
 
 - Schede del box (ordine fisso): Comm (messaggi al pilota), Gara (cronologia, cruscotto, distacchi con scelta assoluta/categoria, turno pilota, carburante, rifornimento), Passo, Impostazioni, Timing (contenuto non toccare). Turno pilota (`gpsCambio.pistaMs`) conta solo con `fuelSystem.onTrack`; stint massimo in `pc_stint_max`; cambio a mano `gpsCambioManuale` (evento `cambioRisposta` con `manuale`). Ogni tasto del box lampeggia 1 s (classe `premuto`, `boxview.js`). Vista auto: distacchi oltre 7 caratteri (es. `-1:11.577`) arrotondati al decimo (`gapCorto` in `autoview.js`); riga NOI del box: giri dalla PARTENZA gara (`crGiriGara`, toglie i giri del riscaldamento).
 
+- Simulatore, prova colori: casella "rivali fissi" e pulsante "Scenario prova colori" in `sim.html` (`fissi` in `simponte.js`: gli altri girano al nostro ritmo, senza soste, a 10 s l'uno dall'altro; i distacchi cambiano solo con le righe `ritmo`). `passo.js`: giro 1 e tempi < 20 s (o < meta' del giro tipico) mai miglior giro.
+
 ## Da fare / aperto
 - Vedi `docs/REVISIONE.md` (difetti, architettura, evoluzione). `BOX_PIN` e' facoltativo: senza, il server si comporta come prima.
 - Prove su telefoni veri (GPS, notifiche, sirena, permessi, risparmio batteria).

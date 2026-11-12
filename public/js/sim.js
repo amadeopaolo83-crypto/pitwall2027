@@ -60,6 +60,12 @@
     r.onload = () => { try { const d = JSON.parse(r.result); if (d.tipo !== 'pitcomm-circuito' || !d.gps) throw new Error('non e’ un circuito di PitComm'); caricaCircuito(d.gps, f.name); } catch (e) { $('circ').textContent = 'File non valido: ' + e.message; } };
     r.readAsText(f);
   };
+  // Scenario per vedere i colori dei distacchi sull'auto: nessuna sosta degli altri, rivali fissi a 10 s, noi alterniamo +2% e -2% ogni 3 giri.
+  $('provaColori').onclick = () => {
+    $('piano').value = 'lancio 300\n20\nritmo 3 3 102\nritmo 7 3 98\nritmo 11 3 102\nritmo 15 3 98';
+    $('fissi').checked = true; $('centro').checked = false;
+    $('stato').textContent = 'Scenario prova colori pronto: premi Avvia. Sull\u2019auto: verde quando il distacco migliora, giallo quando peggiora, a ogni giro.';
+  };
   $('ritmo').oninput = () => { $('ritmoVal').textContent = Math.round($('ritmo').value * 100) + '%'; };
 
   function disegna(auto) {
@@ -88,7 +94,7 @@
     const ritardo = conCorsa ? raceT0 - zeroS : 0, d = (x) => x + ritardo;
     const corpo = {
       evento: codiceOra, numero: $('numero').value.trim() || '1', giroS: parseFloat($('giro').value) || 100,
-      centro: !!($('centro') && $('centro').checked), partenza: Math.max(0, ritardo),
+      centro: !!($('centro') && $('centro').checked), fissi: !!($('fissi') && $('fissi').checked), partenza: Math.max(0, ritardo),
       passaggi: conCorsa ? corsa.passaggi.map(d) : [], finestre: conCorsa ? corsa.finestre.map((w) => ({ da: d(w.da), a: d(w.a), fattore: w.fattore })) : [],
       pause: conCorsa ? corsa.pauseT.map((q) => ({ da: d(q.da), durata: q.durata })) : [], tGara: tGaraOra(tr), seme: parseInt($('seme').value, 10) || 1, nAuto: 14,
     };

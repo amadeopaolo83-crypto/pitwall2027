@@ -29,17 +29,23 @@ function generaRivale(i, cfg, fino) {
   // meta' un po' piu' lenta (ritmi da -2% a +2%, vicini fra loro), poco rumore sul giro, partenza lanciata con meta' davanti e
   // meta' dietro di noi, soste con la stessa frequenza delle nostre: i distacchi cambiano di poco, giro per giro.
   const c = cfg.centro ? cfg.centro : null, mezzo = c ? (c.passo.length - 1) / 2 : 0;
-  const base = c ? cfg.giroS * (1 + 0.02 * (c.passo[i] - mezzo) / (mezzo || 1)) : cfg.giroS * (0.95 + 0.11 * r.uni());   // ritmo proprio
-  const rumore = c ? 0.003 : 0.008, primoGiro = c ? 1 : 1.06;
+  const base = cfg.fissi ? cfg.giroS : c ? cfg.giroS * (1 + 0.02 * (c.passo[i] - mezzo) / (mezzo || 1)) : cfg.giroS * (0.95 + 0.11 * r.uni());   // ritmo proprio
+  // Prova colori (cfg.fissi): gli altri girano al nostro ritmo nominale, senza soste, a 10 s l'uno dall'altro, meta' davanti e meta' dietro.
+  // Il rivale davanti e quello dietro non cambiano mai: i distacchi si muovono solo con i nostri cambi di ritmo (righe "ritmo").
+  const fissi = !!cfg.fissi;
+  const rumore = fissi ? 0.0015 : c ? 0.003 : 0.008, primoGiro = (c || fissi) ? 1 : 1.06;
   const stint = () => c ? 5 + Math.floor(r.uni() * 3) : 7 + Math.floor(r.uni() * 4);   // giri tra due soste
   const perdita = c ? 12 + r.uni() * 10 : 24 + r.uni() * 22;  // secondi persi in una sosta normale (corsia e uscita)
   const guasto = i === 4;                                     // uno si ferma a lungo una volta
-  let prossimaSosta = c ? 5 + Math.floor(r.uni() * 3) : 6 + Math.floor(r.uni() * 5), giro = 0;
-  let t = c ? Math.max(0, cfg.partenza + (c.griglia[i] - mezzo) * 0.5) : i * 0.4;   // schieramento: pochi decimi tra uno e l'altro
+  let prossimaSosta = fissi ? 1e9 : c ? 5 + Math.floor(r.uni() * 3) : 6 + Math.floor(r.uni() * 5), giro = 0;
+  const meta = Math.floor(((cfg.nAuto || 14) - 1) / 2);
+  const scarto = fissi ? (i < meta ? -(meta - i) : (i - meta + 1)) * 10 : 0;        // secondi dietro (+) o davanti (-) a noi al primo passaggio
+  let t = fissi ? cfg.partenza : c ? Math.max(0, cfg.partenza + (c.griglia[i] - mezzo) * 0.5) : i * 0.4;   // schieramento: pochi decimi tra uno e l'altro
   const passaggi = [], giri = [], soste = [];
   while (t < fino && giro < 400) {
     giro++;
     let durata = base * (1 + rumore * r.gauss()) * (giro === 1 ? primoGiro : 1);
+    if (fissi && giro === 1) durata += scarto;
     const inizio = t;
     const sc = cfg.finestre.find((w) => inizio >= w.da && inizio < w.a);
     if (sc) durata /= sc.fattore;
@@ -83,7 +89,7 @@ function avvia(corpo) {
     const mescola = () => { const a = Array.from({ length: n }, (_, k) => k); for (let k = n - 1; k > 0; k--) { const j = Math.floor(r.uni() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; };
     centro = { passo: mescola(), griglia: mescola() };
   }
-  const cfg = { centro, partenza: eNum(corpo.partenza, 0, 600) ? corpo.partenza : 0, numero, giroS: corpo.giroS, passaggi: corpo.passaggi.slice(), finestre: finestre.map((w) => ({ da: w.da, a: w.a, fattore: w.fattore })), pause: pause.map((p) => ({ da: p.da, durata: p.durata })), seme: eNum(corpo.seme, 0, 1e9) ? Math.floor(corpo.seme) : 1 };
+  const cfg = { centro, fissi: corpo.fissi === true, nAuto, partenza: eNum(corpo.partenza, 0, 600) ? corpo.partenza : 0, numero, giroS: corpo.giroS, passaggi: corpo.passaggi.slice(), finestre: finestre.map((w) => ({ da: w.da, a: w.a, fattore: w.fattore })), pause: pause.map((p) => ({ da: p.da, durata: p.durata })), seme: eNum(corpo.seme, 0, 1e9) ? Math.floor(corpo.seme) : 1 };
   const ultimo = cfg.passaggi.length ? cfg.passaggi[cfg.passaggi.length - 1] : 0;
   const fino = Math.max(600, ultimo + 240);
   const rivali = [];

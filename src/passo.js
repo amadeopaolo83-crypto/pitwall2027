@@ -27,6 +27,7 @@ const BASE_GIRI = 5;
 const ZERI_STABILE = 5;         // giri validi di fila dentro la tolleranza = passo stabile
 const FINESTRA_ALTRI = 10;
 const PAUSA_MS = 20 * 60 * 1000;
+const MIN_GIRO_S = 20;       // un "giro" piu' breve e' un errore di lettura (doppio passaggio, partenza), mai un miglior giro
 const MAX_GIRI = 3000;
 const MAX_ETA_MS = 72 * 3600 * 1000;
 const OGNI_MS = 2000;           // al massimo un aggiornamento ogni 2 s verso i telefoni
@@ -71,6 +72,11 @@ function stanza(code) {
 }
 
 // Un giro nuovo valido: aggiorna finestra e trend della vettura.
+function mediana(a) {
+  const x = a.slice().sort((p, q) => p - q), m = x.length >> 1;
+  return x.length % 2 ? x[m] : (x[m - 1] + x[m]) / 2;
+}
+
 function aggiungiValido(v, t) {
   v.valid.push(t);
   if (v.valid.length > FINESTRA_ALTRI) v.valid.shift();
@@ -108,9 +114,12 @@ function registraGiro(v, n, t, ts) {
   let stintNuovo = false;
   if (v.ultimoTs != null && ts - v.ultimoTs > PAUSA_MS) { v.stint++; nuovoStint(v); stintNuovo = true; }
   v.ultimoTs = ts;
-  if (v.best == null || t < v.best) { v.best = t; v.bestN = n; }
+  // Il primo giro (partenza) e i tempi assurdi (meno di 20 s, o meno della meta' del nostro giro tipico) non possono essere il
+  // "migliore": un tempo strano non deve falsare tutto il passo (con best = 2,482 nessun giro successivo risultava valido).
+  const plausibile = t >= MIN_GIRO_S && (v.valid.length < 3 || t >= 0.5 * mediana(v.valid.slice(-10)));
+  if (n > 1 && plausibile && (v.best == null || t < v.best)) { v.best = t; v.bestN = n; }
   // Il primo giro (partenza, traffico, gomme fredde) non conta mai.
-  const valido = n > 1 && t <= v.best * (1 + SOGLIA);
+  const valido = n > 1 && plausibile && v.best != null && t <= v.best * (1 + SOGLIA);
   if (valido) aggiungiValido(v, t);
   return { n, t: arrotonda(t), ts, v: valido, s: v.stint, nuovoStint: stintNuovo };
 }
@@ -160,7 +169,7 @@ function registra(code, piloti, numero, ora = Date.now()) {
     if (nostra && v.giri == null && giri != null && S.giri.length && S.giri[S.giri.length - 1].n > giri) {
       S.giri = []; S.byN = new Map(); S.daInviare = [];
     }
-    if (best != null && (v.best == null || best < v.best)) { v.best = best; if (giri != null && v.bestN == null) v.bestN = giri; }
+    if (best != null && best >= MIN_GIRO_S && (v.best == null || best < v.best)) { v.best = best; if (giri != null && v.bestN == null) v.bestN = giri; }
 
     let nuovoN = null;
     if (giri != null) {
@@ -258,11 +267,11 @@ function ricostruisci(S) {
   let stint = -1;
   for (const g of S.giri) {
     if (g.s !== stint) { stint = g.s; nuovoStint(v); v.stint = g.s; }
-    if (v.best == null || g.t < v.best) { v.best = g.t; v.bestN = g.n; }
+    if (g.n > 1 && g.t >= MIN_GIRO_S && (v.best == null || g.t < v.best)) { v.best = g.t; v.bestN = g.n; }
     if (g.v) aggiungiValido(v, g.t);
     v.ultimoTs = g.ts;
   }
-  if (best != null && (v.best == null || best < v.best)) { v.best = best; v.bestN = bestN; }
+  if (best != null && best >= MIN_GIRO_S && (v.best == null || best < v.best)) { v.best = best; v.bestN = bestN; }
 }
 
 /**
