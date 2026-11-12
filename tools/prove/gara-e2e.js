@@ -318,8 +318,9 @@ const log = (...a) => console.log(ora(), ...a);
   const posGara = campioni.filter((c) => c.t > (LANCIO + 120) * 1000 && c.auto.vista === 'assoluta' && /^\d+$/.test(c.auto.pos)).map((c) => Number(c.auto.pos));
   const nelMezzo = posGara.filter((p) => p >= 3 && p <= 11).length;
   V.ok('gruppo compatto: la nostra auto (n. 1) sta tra il 3° e l\'11° posto per almeno il 60% della gara', posGara.length > 20 && nelMezzo >= 0.6 * posGara.length, { letture: posGara.length, nelMezzo, posti: [...new Set(posGara)].sort((a, b) => a - b) });
-  const delta = []; let pr = null;
-  for (const r of timing) { if (pr && r.vista === pr.vista && r.aNum === pr.aNum && r.aS != null && pr.aS != null && r.aS !== pr.aS) delta.push(Math.abs(r.aS - pr.aS)); pr = r; }
+  const delta = [];
+  const ultimoA = {};   // ultimo valore numerico per vista e rivale (tra due valori c'e' spesso un "1 giro" momentaneo)
+  for (const r of timing) { const k = r.vista + '|' + r.aNum; if (r.aS == null) continue; if (ultimoA[k] != null && ultimoA[k] !== r.aS) delta.push(Math.abs(r.aS - ultimoA[k])); ultimoA[k] = r.aS; }
   delta.sort((x, y) => x - y);
   console.log('Distacco da chi sta davanti, stesso rivale: ' + delta.length + ' cambi, mediana ' + (delta.length ? delta[delta.length >> 1].toFixed(2) : '-') + ' s, sotto 2 s: ' + delta.filter((x) => x < 2).length);
   // tasti del box
