@@ -13,6 +13,19 @@ V.ok('sim.html: pulsante "Scenario prova colori" e casella "rivali fissi"', /id=
 const P = 1.7, d = (x) => x + P;
 const corpo = (nome, corsa, extra) => Object.assign({ evento: nome, numero: '1', giroS: 100, passaggi: corsa.passaggi.map(d), finestre: corsa.finestre.map((w) => ({ da: d(w.da), a: d(w.a), fattore: w.fattore })), pause: corsa.pauseT.map((q) => ({ da: d(q.da), durata: q.durata })), tGara: 0, seme: 1, nAuto: 14, partenza: P }, extra);
 
+// (0) come nel video della prova: l'auto parte sulla linea e il primo passaggio e' 2,48 s dopo lo zero (non e' un giro)
+{
+  const R = 2.48, partenzaLinea = Pista.pianifica(pista, [{ giri: 8 }], opz);
+  const pass = [0].concat(partenzaLinea.passaggi).map((x) => x + R);
+  sp.avvia({ evento: 'LINEA', numero: '1', giroS: 100, passaggi: pass, finestre: [], pause: [], tGara: 0, seme: 1, nAuto: 14, partenza: R, centro: true });
+  const sL = sp._stati.get('LINEA'), noiL = sL.auto[0];
+  V.ok('primo passaggio sulla linea (+2,48 s) non e\' un giro: giro 1 ~100 s, nessun giro sotto i 90 s', noiL.giri[0] > 90 && noiL.giri.every((x) => x > 90), noiL.giri.map((x) => x.toFixed(1)));
+  const cl = sp.classificaAl(sL, 450), n = cl.find((x) => x.numero === '1');
+  V.ok('dopo 4 giri siamo a 4 giri come gli altri (non "1 giro" avanti a tutti) e il miglior giro e\' ~100 s', n.giri === 4 && n.giriRitardo === 0 && cl.filter((x) => x.giri === 4).length >= 10 && n.migliorGiro > 90, { giri: n.giri, giriRitardo: n.giriRitardo, altri4: cl.filter((x) => x.giri === 4).length, best: n.migliorGiro });
+  const t = computeTiming({ tipo: 'gara' }, cl, '1').timing;
+  V.ok('i distacchi con chi sta davanti/dietro sono numeri (i colori si possono calcolare), non "1 giro"', /^[+-]\d/.test(t.gapAhead || '+0') && /^[+-]?\d/.test(t.gapBehind || '0') && !/giro/.test((t.gapAhead || '') + (t.gapBehind || '')), { a: t.gapAhead, b: t.gapBehind });
+}
+
 // (1) miglior giro nel passo
 const base = Pista.pianifica(pista, [{ giri: 6 }], opz);
 sp.avvia(corpo('NORM', base, { centro: true }));

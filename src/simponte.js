@@ -98,7 +98,12 @@ function avvia(corpo) {
     if (rv.numero === numero) rv.numero = String(Number(rv.numero) + 1);
     rivali.push(rv);
   }
-  const noi = { numero, nome: "Noi", classe: "A", soste: [], passaggi: cfg.passaggi, giri: cfg.passaggi.map((t, k) => t - (k ? cfg.passaggi[k - 1] : 0)) };
+  // Il passaggio sul traguardo subito dopo il via (l'auto parte sulla linea: pochi secondi dopo lo zero) non e' un giro: il giro 1 va dalla
+  // linea alla linea dopo. Se contasse come giro, la nostra auto avrebbe un giro di piu' di tutti ("1 giro" al posto dei distacchi, quindi
+  // niente colori) e un "miglior giro" di 2,5 s che falserebbe il passo.
+  let pas = cfg.passaggi, origine = 0;
+  if (pas.length > 1 && pas[0] - cfg.partenza < 0.4 * cfg.giroS && pas[1] - pas[0] > 0.6 * cfg.giroS) { origine = pas[0]; pas = pas.slice(1); }
+  const noi = { numero, nome: "Noi", classe: "A", soste: [], passaggi: pas, giri: pas.map((t, k) => t - (k ? pas[k - 1] : origine)) };
   stati.set(evento, { cfg, auto: [noi].concat(rivali), avvioMs: Date.now() - corpo.tGara * 1000 });
   return { ok: true, auto: nAuto, rivaliGiri: rivali.map((r) => r.passaggi.length) };
 }
