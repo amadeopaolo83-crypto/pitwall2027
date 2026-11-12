@@ -132,7 +132,7 @@ function mpAvviaMioGps(){
     }
     if(mp.reg && mp.ed && pos.coords.accuracy <= 15){
       const q = { lat: mp.mio.lat, lng: mp.mio.lng }, u = mp.ed.pts[mp.ed.pts.length - 1];
-      if(!u || gpsDistanza(u, q) >= (mp.modo === 'tracciato' ? MP_PASSO_TRACCIATO_M : GPS_PASSO_REG_M)){ mp.ed.pts.push(q); mpDisegnaLavoro(); mpPannello(); }
+      if(!u || gpsDistanza(u, q) >= (mp.modo === 'tracciato' ? MP_PASSO_TRACCIATO_M : GPS_PASSO_REG_M)){ mp.ed.pts.push(q); mpCorsiaStacca(q); mpDisegnaLavoro(); mpPannello(); }
     }
     if(mp.cal && mp.cal.mis && pos.coords.accuracy <= MP_CAL_ACC_M) mp.cal.mis.campioni.push({ lat: mp.mio.lat, lng: mp.mio.lng, acc: pos.coords.accuracy });
     if(mp.modo === 'calibra'){ mpCalCerchi(); mpPannello(); }
@@ -170,7 +170,8 @@ function mpVistaIniziale(){
 
 // ---------- zone salvate ----------
 
-const MP_PASSO_TRACCIATO_M = 15;   // registrando il tracciato girando: un punto ogni tanti metri
+const MP_PASSO_TRACCIATO_M = 15;
+const MP_CORSIA_STACCO_M = 5;      // la corsia box non coincide con il tracciato: un punto piu' vicino di cosi' si sposta di lato   // registrando il tracciato girando: un punto ogni tanti metri
 const MP_COL = { box: '#ff8a00', rif: '#2ecc71', cor: '#35d0ff', tra: '#ff4fd8', gir: '#6aa7ff', trk: '#f2f2f2', cal: '#b388ff' };
 
 function mpEtichetta(layer, testo){
@@ -260,6 +261,39 @@ function mpVaiA(modo){
   mpInfoAggiorna();
 }
 
+// Corsia box: un punto disegnato sopra il tracciato (o a meno di MP_CORSIA_STACCO_M) si sposta di lato, a quella distanza.
+// Lato: quello dove si e' toccato; se il punto e' proprio sulla linea, quello della zona box (o degli altri punti della corsia).
+// Cosi' la corsia resta vicina alla pista ma non uguale, e l'auto a velocita' di pista non sembra in corsia. Ritorna true se l'ha spostato.
+function mpCorsiaStacca(q){
+  if(mp.modo !== 'corsia' || !q) return false;
+  const c = gpsCfg.tracciato;
+  if(!c || c.length < 3) return false;
+  const k = Math.PI / 180, mLat = 111320, mLng = 111320 * Math.cos(q.lat * k);
+  const X = (p) => (p.lng - q.lng) * mLng, Y = (p) => (p.lat - q.lat) * mLat;
+  let v = null;
+  for(let i = 0; i < c.length; i++){
+    const a = c[i], b = c[(i + 1) % c.length];
+    const ax = X(a), ay = Y(a), dx = X(b) - ax, dy = Y(b) - ay, l2 = dx * dx + dy * dy;
+    if(l2 <= 0) continue;
+    const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2));
+    const px = ax + t * dx, py = ay + t * dy, d = Math.hypot(px, py);
+    if(!v || d < v.d) v = { d, px, py, dx, dy, l: Math.sqrt(l2) };
+  }
+  if(!v || v.d >= MP_CORSIA_STACCO_M - 0.05) return false;
+  let nx = -v.dy / v.l, ny = v.dx / v.l;
+  let sx = -v.px, sy = -v.py;                       // dalla pista al punto toccato
+  if(Math.hypot(sx, sy) < 0.5){
+    const altri = mp.ed ? mp.ed.pts.filter((p) => p !== q) : [];
+    const rif = gpsCfg.box || (altri.length ? { lat: altri.reduce((a, p) => a + p.lat, 0) / altri.length, lng: altri.reduce((a, p) => a + p.lng, 0) / altri.length } : null);
+    if(rif){ sx = X(rif) - v.px; sy = Y(rif) - v.py; }
+  }
+  if(sx * nx + sy * ny < 0){ nx = -nx; ny = -ny; }
+  const x = v.px + nx * MP_CORSIA_STACCO_M, y = v.py + ny * MP_CORSIA_STACCO_M;
+  q.lat += y / mLat; q.lng += x / mLng;
+  return true;
+}
+function mpCorsiaAvvisoStacco(){ const e = $('mpInfo'); if(e) e.textContent = 'Punto spostato a ' + MP_CORSIA_STACCO_M + ' m dal tracciato: la corsia box e\u2019 vicina alla pista, non sopra.'; }
+
 function mpPuntoIcona(){ return L.divIcon({ className: 'mp-pt', html: '<i></i>', iconSize: [26, 26], iconAnchor: [13, 13] }); }
 
 function mpDisegnaLavoro(){
@@ -289,7 +323,7 @@ function mpDisegnaLavoro(){
   ed.pts.forEach((q, i) => {
     const m = L.marker([q.lat, q.lng], { icon: mpPuntoIcona(), draggable: true }).addTo(mp.lavoro);
     m.on('drag', (e) => { q.lat = e.latlng.lat; q.lng = e.latlng.lng; mpRidisegnaLinea(); });
-    m.on('dragend', () => mpPannello());
+    m.on('dragend', () => { if(mpCorsiaStacca(q)){ mpDisegnaLavoro(); mpCorsiaAvvisoStacco(); } mpPannello(); });
   });
 }
 
@@ -312,7 +346,11 @@ function mpClick(ll){
   else if(mp.modo === 'traguardo'){
     if(mp.ed.pts.length >= 2){ $('mpInfo').textContent = 'Il traguardo ha due estremi: trascinali per spostarli, oppure Svuota.'; return; }
     mp.ed.pts.push({ lat: ll.lat, lng: ll.lng });
-  } else mp.ed.pts.push({ lat: ll.lat, lng: ll.lng });
+  } else {
+    const q = { lat: ll.lat, lng: ll.lng };
+    mp.ed.pts.push(q);
+    if(mpCorsiaStacca(q)){ mpDisegnaLavoro(); mpPannello(); mpCorsiaAvvisoStacco(); return; }
+  }
   mpDisegnaLavoro();
   mpPannello();
 }
@@ -322,7 +360,7 @@ function mpAggiungiMio(){
   if(mp.mio.acc > 25){ $('mpInfo').textContent = 'Precisione scarsa (±' + Math.round(mp.mio.acc) + ' m): aspetta qualche secondo.'; return; }
   if(mp.modo === 'box') mp.ed.box = { lat: mp.mio.lat, lng: mp.mio.lng };
   else if(mp.modo === 'traguardo' && mp.ed.pts.length >= 2){ $('mpInfo').textContent = 'Il traguardo ha gia\u2019 due estremi.'; return; }
-  else mp.ed.pts.push({ lat: mp.mio.lat, lng: mp.mio.lng });
+  else { const q = { lat: mp.mio.lat, lng: mp.mio.lng }; mp.ed.pts.push(q); if(mpCorsiaStacca(q)){ mpDisegnaLavoro(); mpPannello(); mpCorsiaAvvisoStacco(); return; } }
   mpDisegnaLavoro();
   mpPannello();
 }
@@ -343,6 +381,7 @@ function mpSalva(){
     gpsInvia({ refuelPoly: ed.pts.map((q) => ({ lat: q.lat, lng: q.lng })) });
   } else if(mp.modo === 'corsia'){
     if(ed.pts.length < 2) return;
+    ed.pts.forEach((q) => mpCorsiaStacca(q));
     gpsInvia({ corsia: ed.pts.map((q) => ({ lat: q.lat, lng: q.lng })) });
   } else if(mp.modo === 'tracciato'){
     if(ed.pts.length < 8){ $('mpInfo').textContent = 'Servono almeno 8 punti lungo la pista (ora ' + ed.pts.length + ').'; return; }
@@ -664,7 +703,7 @@ function mpPannello(){
     h += '<div class="mp-righe">' + mpBtn('Applica a tutte le zone', 'mpCalApplica()', c.media ? 'primary' : 'mp-off') + mpBtn('Ricomincia', 'mpCalSvuota()') + mpBtn('Esci', 'mpEsciSenzaSalvare()') + '</div>';
   } else if(mp.modo === 'corsia'){
     const n = ed ? ed.pts.length : 0;
-    h += '<div class="mp-aiuto">Tocca i punti lungo la corsia box, dall’ingresso all’uscita (almeno 2), oppure registrala camminando. Punti: ' + n + (n > 1 ? ' · ' + Math.round(gpsLunghezza(ed.pts)) + ' m' : '') + '</div>';
+    h += '<div class="mp-aiuto">Tocca i punti lungo la corsia box, dall’ingresso all’uscita (almeno 2), oppure registrala camminando.' + (gpsCfg.tracciato && gpsCfg.tracciato.length >= 3 ? ' Un punto sopra il tracciato si sposta da solo a ' + MP_CORSIA_STACCO_M + ' m di lato.' : '') + ' Punti: ' + n + (n > 1 ? ' · ' + Math.round(gpsLunghezza(ed.pts)) + ' m' : '') + '</div>';
     h += '<div class="mp-righe">' + mpBtn(mp.reg ? 'Fine registrazione' : 'Registra camminando', 'mpRegistraCamminando()', mp.reg ? 'primary' : '') + mpBtn('Annulla ultimo', 'mpAnnullaUltimo()') + mpBtn('Svuota', 'mpSvuota()') + '</div>';
     h += '<div class="mp-righe"><span class="mono" style="font-size:12px">Limite in corsia</span><input type="number" class="mp-num" min="20" max="150" step="1" value="' + (gpsCfg.limiteKmh || 60) + '" onchange="mpLimite(this)"><span class="mono" style="font-size:12px">km/h</span></div>';
     h += '<div class="mp-righe">' + mpBtn('Salva corsia', 'mpSalva()', n >= 2 ? 'primary' : 'mp-off') + mpBtn('Togli la corsia', 'mpRimuoviZona()') + mpBtn('Esci', 'mpEsciSenzaSalvare()') + '</div>';
