@@ -12,6 +12,8 @@ const mk = (root, port) => new Promise((res) => { const srv = http.createServer(
     await pg.route('**/socket.io.min.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.io=()=>({on(){},off(){},emit(){},connected:true,onAny(){}});' }));
     await pg.route(/fonts\.(googleapis|gstatic)/, (r) => r.abort());
     await pg.goto(url);
+    // Unica differenza voluta rispetto a pitwallnew: il tasto "cambia" dell'auto e' piu' piccolo e sta nell'angolo (non copre DAVANTI). Si nasconde in entrambe per confrontare il resto.
+    await pg.addStyleTag({ content: '#autoView #changeRoleBtn{visibility:hidden!important}' });
     await pg.evaluate((ruolo) => {
       role = ruolo; code = 'T'; socket = io();
       document.querySelectorAll('body > div').forEach((d) => { if (d.id !== (ruolo === 'auto' ? 'autoView' : 'boxView')) d.hidden = true; });
