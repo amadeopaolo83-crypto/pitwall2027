@@ -149,8 +149,8 @@ srv.listen(8797, async () => {
     r.prove = ['-1:11.577', '+1:59.96', '-1:05.04', '+12.345', '+123.456', '+1 giro', '-0.512', '+10:00.049'].map((x) => gapCorto(x));
     r.classe = document.getElementById('timingGapBehind').className;
     return r; });
-  V.ok('auto: distacco lungo arrotondato al decimo (-1:11.577 -> -1:11.6), corto invariato (+3.412)', gl.lungo === '-1:11.6' && gl.corto === '+3.412', gl);
-  V.ok('auto: arrotondamenti e casi limite', JSON.stringify(gl.prove) === JSON.stringify(['-1:11.6', '+2:00.0', '-1:05.0', '+12.345', '+2:03.5', '+1 giro', '-0.512', '+10:00.0']), gl.prove);
+  V.ok('auto: distacco lungo arrotondato al decimo (-1:11.577 -> -1:11.6), corto troncato al centesimo (+3.412 -> +3.41)', gl.lungo === '-1:11.6' && gl.corto === '+3.41', gl);
+  V.ok('auto: arrotondamenti e casi limite', JSON.stringify(gl.prove) === JSON.stringify(['-1:11.6', '+2:00.0', '-1:05.0', '+12.34', '+123.45', '+1 giro', '-0.51', '+10:00.0']), gl.prove);
   V.ok('auto: niente carattere piu\' piccolo', !/gap-lungo/.test(gl.classe) && gl.classe === 'gap', gl.classe);
 
   V.ok('nessun errore nella pagina', C.erroriVeri(errs).length === 0, errs);

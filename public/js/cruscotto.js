@@ -389,9 +389,9 @@ function crRenderCategoria(){
     box.appendChild(r);
   };
   const p = Number(t.catPosition);
-  riga('cat-davanti', t.catNumberAhead ? (p - 1) + '\u00b0' : '', t.catNumberAhead ? descriviRivale(t.catNumberAhead, t.catNameAhead) : 'Sei in testa alla categoria', t.catNumberAhead ? (t.catGapAhead || '\u2014') : '');
+  riga('cat-davanti', t.catNumberAhead ? (p - 1) + '\u00b0' : '', t.catNumberAhead ? descriviRivale(t.catNumberAhead, t.catNameAhead) : 'Sei in testa alla categoria', t.catNumberAhead ? (gapCorto(t.catGapAhead) || '\u2014') : '');
   riga('cat-noi', p + '\u00b0', 'NOI', crNoiTxt());
-  riga('cat-dietro', t.catNumberBehind ? (p + 1) + '\u00b0' : '', t.catNumberBehind ? descriviRivale(t.catNumberBehind, t.catNameBehind) : 'Nessuno dietro', t.catNumberBehind ? (t.catGapBehind || '\u2014') : '');
+  riga('cat-dietro', t.catNumberBehind ? (p + 1) + '\u00b0' : '', t.catNumberBehind ? descriviRivale(t.catNumberBehind, t.catNameBehind) : 'Nessuno dietro', t.catNumberBehind ? (gapCorto(t.catGapBehind) || '\u2014') : '');
 }
 
 function crRenderGapCard(){

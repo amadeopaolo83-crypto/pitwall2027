@@ -46,9 +46,12 @@ let lastTiming = null;
 // com'e' arrivato (i colori si calcolano sul valore intero, qui cambia solo la scritta).
 function gapCorto(txt){
   const t = String(txt == null ? '' : txt).trim();
-  if(t.length <= 7) return t;
   const m = /^([+\-\u2212]?)(?:(\d+):)?(\d+)\.(\d+)$/.exec(t);
   if(!m) return t;
+  // il live timing non ha i millesimi: i decimali oltre il centesimo si troncano (non si arrotondano)
+  const tronca = m[1] + (m[2] != null ? m[2] + ':' : '') + m[3] + '.' + m[4].slice(0, 2);
+  if(tronca.length <= 7) return tronca;
+  // distacchi lunghi (es. -1:11.57): al decimo di secondo
   const tot = Math.round(((Number(m[2] || 0) * 60) + Number(m[3] + '.' + m[4])) * 10) / 10;
   const mm = Math.floor(tot / 60), ss = tot - mm * 60;
   return m[1] + (mm ? mm + ':' + (ss < 10 ? '0' : '') + ss.toFixed(1) : ss.toFixed(1));

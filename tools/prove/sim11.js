@@ -23,9 +23,9 @@ srv.listen(8784, async () => {
     return o;
   });
   V.ok('inizio bianco', r.inizio === 'bianco', r);
-  V.ok('"1 giro" momentaneo: resta bianco ma non si perde il riferimento', r.unGiro === 'bianco', r);
-  V.ok('dopo "1 giro" il distacco aumenta: giallo', r.dopoUnGiro === 'g-down', r);
-  V.ok('nuovo "1 giro" con lo stesso avversario: il giallo resta', r.tieneGiallo === 'g-down', r);
+  V.ok('da +2.0 a "1 giro" davanti: il distacco e\' enorme, quindi peggiora: giallo', r.unGiro === 'g-down', r);
+  V.ok('da "1 giro" a +7.0: il distacco migliora: verde', r.dopoUnGiro === 'g-up', r);
+  V.ok('di nuovo "1 giro" con lo stesso avversario: giallo', r.tieneGiallo === 'g-down', r);
   V.ok('il distacco si riduce: verde', r.migliora === 'g-up', r);
   V.ok('avversario nuovo: si riparte da bianco', r.altroRivale === 'bianco' && r.altroEVuoto === 'bianco', r);
   V.ok('nessun errore', errs.length === 0, errs);

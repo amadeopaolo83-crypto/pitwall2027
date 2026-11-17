@@ -50,11 +50,13 @@ const links = new Map(); // codice team -> { controller, stopped, evento, numero
 // ---------- tempi ----------
 
 // 2.275 -> "2.275", 72.232 -> "1:12.232"
+// Distacco in testo, TRONCATO al centesimo (il live timing non ha i millesimi).
 function formatSeconds(sec) {
-  const s = Math.abs(sec);
-  if (s < 60) return s.toFixed(3);
+  const c = Math.floor(Math.abs(sec) * 100 + 1e-6);   // centesimi interi
+  const s = c / 100;
+  if (s < 60) return s.toFixed(2);
   const min = Math.floor(s / 60);
-  const resto = (s - min * 60).toFixed(3).padStart(6, "0");
+  const resto = (s - min * 60).toFixed(2).padStart(5, "0");
   return `${min}:${resto}`;
 }
 
