@@ -56,6 +56,11 @@ const sC = sp._stati.get('COL'), seq = [];
 for (let t = 10; t <= colori.durata; t += 5) { const c = computeTiming({ tipo: 'gara' }, sp.classificaAl(sC, t), '1'); if (c.trovata) seq.push([t, c.timing]); }
 const fissi = seq.filter(([t]) => t > 250);
 V.ok('rivali fissi: dopo i primi giri davanti e dietro sono sempre gli stessi', new Set(fissi.map(([, x]) => x.numberAhead)).size === 1 && new Set(fissi.map(([, x]) => x.numberBehind)).size === 1, [...new Set(fissi.map(([, x]) => x.numberAhead + '/' + x.numberBehind))]);
+// (3) il passo dei rivali: anche chi sta DAVANTI (primo giro piu' corto per lo scarto di griglia) deve avere giri validi, non "dati insufficienti"
+passo.azzera('SIM13r');
+for (let t = 5; t < colori.durata && t < 700; t += 2.5) passo.registra('SIM13r', sp.classificaAl(sC, t), '1', 1e9 + t * 1000);
+const rr = passo.riepilogo('SIM13r').auto;
+V.ok('passo dei rivali: tutti (anche quelli davanti) hanno almeno 3 giri validi dopo 7 giri e una media', Object.values(rr).every((x) => x.n >= 3 && x.m10 != null && x.b > 90), Object.entries(rr).map(([k, x]) => k + ':' + x.b + '/' + x.n));
 const root = C.ROOT;
 const srv = http.createServer((q, r) => { let p = decodeURIComponent(q.url.split('?')[0]); if (p === '/') p = '/index.html'; fs.readFile(path.join(root, p), (e, dd) => { if (e) { r.writeHead(404); return r.end(); } r.writeHead(200, { 'Content-Type': { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }[path.extname(p)] || 'application/octet-stream' }); r.end(dd); }); });
 srv.listen(8786, async () => {

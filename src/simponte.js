@@ -126,7 +126,7 @@ function classificaAl(s, t) {
     return {
       numero: a.numero, nome: a.nome, classe: a.classe, giri: n,
       tempoTotale: n ? a.passaggi[n - 1] : null,
-      ultimoGiro: ultimo, migliorGiro: n ? Math.min.apply(null, a.giri.slice(0, n)) : null,
+      ultimoGiro: ultimo, migliorGiro: n > 1 ? Math.min.apply(null, a.giri.slice(1, n)) : null,   // il primo giro (partenza, con lo scarto di griglia) non e' mai il migliore
     };
   });
   righe.sort((x, y) => (y.giri - x.giri) || ((x.tempoTotale == null ? 1e9 : x.tempoTotale) - (y.tempoTotale == null ? 1e9 : y.tempoTotale)) || (x.numero < y.numero ? -1 : 1));
