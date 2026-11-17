@@ -454,6 +454,24 @@
       <label class="toggle"><input type="checkbox" id="dayModeToggle" onchange="sendDayMode()"><span class="knob"></span></label>
     </div>
   </div>
+  <div class="card" id="pisteCard">
+    <h3>Piste (libreria)</h3>
+    <div class="row"><span class="mono" id="pisteAttiva" style="font-size:12px;">Pista caricata: nessuna</span></div>
+    <div class="row"><select id="pisteSel" style="width:100%;max-width:100%;min-height:52px;font-size:16px;"></select></div>
+    <div class="row gps-griglia">
+      <button class="btn small primary" onclick="pisteCarica(this)">Carica questa pista</button>
+      <button class="btn small" onclick="pisteElimina(this)">Elimina questa pista</button>
+    </div>
+    <div class="row val-riga"><span>Nome per salvare</span>
+      <input type="text" id="pisteNome" maxlength="40" placeholder="es. Magny-Cours" style="text-align:center;" autocomplete="off">
+    </div>
+    <div class="row gps-griglia">
+      <button class="btn small primary" onclick="pisteSalva(this)">Salva la pista attuale</button>
+      <button class="btn small" onclick="pisteNuova(this)">Nuova pista (da zero)</button>
+    </div>
+    <div class="row"><span class="mono" id="pisteMsg" style="font-size:11px;color:var(--muted);line-height:1.4;"></span></div>
+    <div class="row"><span class="mono" style="font-size:11px;color:var(--muted);line-height:1.4;">Una pista contiene zona box, rifornimento, corsia, traguardo, giro di riferimento e tracciato. Prima di caricarne un'altra o di partire da zero, quella attuale si copia da sola in "(copia automatica)". Il GPS non si accende da solo.</span></div>
+  </div>
   <div class="card" id="gpsCard">
     <h3>GPS e automatismi</h3>
     <div class="row"><span>GPS acceso (spento all'inizio)</span>
@@ -584,7 +602,7 @@
 <script src="js/core.js?v=51"></script>
 <script src="js/doppiobox.js?v=47"></script>
 <script src="js/push.js?v=47"></script>
-<script src="js/connection.js?v=48"></script>
+<script src="js/connection.js?v=49"></script>
 <script src="js/autoview.js?v=50"></script>
 <script src="js/fuel.js?v=47"></script>
 <script src="js/boxview.js?v=51"></script>
@@ -593,6 +611,7 @@
 <script src="js/strategia.js?v=47"></script>
 <script src="js/cruscotto.js?v=50"></script>
 <script src="js/gps.js?v=51"></script>
+<script src="js/piste.js?v=1"></script>
 <script src="js/lancio.js?v=48"></script>
 <script src="js/mappa.js?v=48"></script>
 <script src="js/race.js?v=47"></script>

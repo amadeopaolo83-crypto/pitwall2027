@@ -137,6 +137,7 @@ function istantanea(S) {
     autoLayout: S.autoLayout,
     sogliaGap: S.sogliaGap,
     gps: S.gps,
+    piste: S.pisteLib, pistaAttiva: S.pistaAttiva,
     raceTimer: {
       startSeconds: t.startSeconds, raceSeconds: t.raceSeconds,
       finishMode: t.finishMode, finishBackground: t.finishBackground, finishDriverName: t.finishDriverName,
@@ -240,6 +241,54 @@ function pulisciGps(attuali, d) {
 
 const eNumero = (x) => typeof x === "number" && Number.isFinite(x);
 
+// ---------- libreria delle piste ----------
+// Una pista salvata e' la parte "di circuito" delle impostazioni GPS (zone, corsia, traguardo, giro di riferimento,
+// tracciato, raggi, limite, allineamento); mai l'interruttore `on`. Stessa validazione di pulisciGps.
+const PISTE_MAX = 20;
+const CAMPI_PISTA = ["box", "refuel", "refuelPoly", "rBox", "rRefuel", "corsia", "larg", "fermoS", "traguardo", "giroRif", "lancioS", "tracciato", "limiteKmh", "allineamento"];
+const PISTA_VUOTA = { on: false, box: null, refuel: null, refuelPoly: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 60, traguardo: null, giroRif: null, lancioS: 240, tracciato: null, limiteKmh: 60, allineamento: null };
+const ELEMENTI_PISTA = ["box", "refuel", "refuelPoly", "corsia", "traguardo", "giroRif", "tracciato"];
+
+function nomePista(n) {
+  if (typeof n !== "string") return null;
+  const t = n.replace(/\s+/g, " ").trim().slice(0, 40);
+  return t || null;
+}
+
+// Ritorna la pista pulita ({campi di CAMPI_PISTA}) o null se non ha nessun elemento valido.
+function pulisciPista(d) {
+  if (!d || typeof d !== "object") return null;
+  const g = pulisciGps(PISTA_VUOTA, d);
+  const out = {};
+  for (const c of CAMPI_PISTA) out[c] = g[c];
+  if (!ELEMENTI_PISTA.some((c) => out[c] != null)) return null;
+  return out;
+}
+
+// La parte "pista" di un pezzo di impostazioni GPS, pronta da mandare a pulisciGps (assenti = valori di partenza).
+function pistaComePezzo(pista) {
+  const pezzo = {};
+  for (const c of CAMPI_PISTA) pezzo[c] = pista[c] === undefined ? PISTA_VUOTA[c] : pista[c];
+  return pezzo;
+}
+
+function elencoPiste(S) {
+  return Object.keys(S.pisteLib || {}).sort((a, b) => (S.pisteLib[b].at || 0) - (S.pisteLib[a].at || 0)).map((nome) => {
+    const p = S.pisteLib[nome];
+    return { nome, at: p.at || 0, el: ELEMENTI_PISTA.filter((c) => p.dati[c] != null).length };
+  });
+}
+
+// Rimette in S.pisteLib le piste salvate ({nome: {at, dati}}); ognuna solo se ha la forma giusta.
+function applicaPiste(S, lib) {
+  for (const k of Object.keys(lib).slice(0, PISTE_MAX)) {
+    const nome = nomePista(k), v = lib[k];
+    if (!nome || !v || typeof v !== "object") continue;
+    const dati = pulisciPista(v.dati);
+    if (dati) S.pisteLib[nome] = { at: eNumero(v.at) ? v.at : 0, dati };
+  }
+}
+
 // Mette nello stato i valori salvati; ogni voce solo se ha la forma giusta.
 function applica(S, d) {
   if (!d || typeof d !== "object") return;
@@ -263,6 +312,8 @@ function applica(S, d) {
   if (d.autoLayout === "telefono" || d.autoLayout === "tablet") { S.autoLayout = d.autoLayout; S.fresh.layout = false; }
   if ([0.1, 0.25, 0.5, 1].includes(d.sogliaGap)) { S.sogliaGap = d.sogliaGap; S.fresh.soglia = false; }
   if (d.gps && typeof d.gps === "object") { S.gps = pulisciGps(S.gps, d.gps); S.fresh.gps = false; }
+  if (d.piste && typeof d.piste === "object") { applicaPiste(S, d.piste); if (Object.keys(S.pisteLib).length) { S.fresh.piste = false; S.piste = elencoPiste(S); } }
+  if (typeof d.pistaAttiva === "string" && S.pisteLib[d.pistaAttiva]) S.pistaAttiva = d.pistaAttiva;
   const t = d.raceTimer;
   if (t && typeof t === "object") {
     const R = S.raceTimer;
@@ -332,4 +383,4 @@ async function svuota() {
 
 function stato() { return { archivio: nome(), ultimoErrore }; }
 
-module.exports = { ripristinaTimer, scriviFoto, pulisciGps, prepara, segna, svuota, stato, istantanea, applica, _test: { leggi, scrivi } };
+module.exports = { ripristinaTimer, scriviFoto, pulisciGps, pulisciPista, pistaComePezzo, elencoPiste, applicaPiste, nomePista, PISTE_MAX, CAMPI_PISTA, prepara, segna, svuota, stato, istantanea, applica, _test: { leggi, scrivi } };

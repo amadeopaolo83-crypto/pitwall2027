@@ -235,6 +235,7 @@ function applyState(state){
     gpsApplicaConfig(state.gps, serverVuoto); // se il server e' ripartito, la copia del box resta quella buona
     if(typeof gpsRipristinaSeServerVuoto === 'function') gpsRipristinaSeServerVuoto(state);
   }
+  if(typeof pisteRipristinaSeServerVuoto === 'function') pisteRipristinaSeServerVuoto(state);
   if(typeof finishFotoRipristina === 'function') finishFotoRipristina(state);
   if(state.cambioPilota && state.cambioPilota.da && typeof gpsCambio !== 'undefined' && state.cambioPilota.da > (gpsCambio.da || 0)){
     gpsImpostaCambio(state.cambioPilota.n, state.cambioPilota.da);
@@ -276,6 +277,7 @@ function registerListeners(){
   socket.on('sogliaGapUpdate', (v) => applySogliaGap(v.valore));
   socket.on('finishPhotoChanged', (v) => { if(typeof applyFinishPhoto === 'function') applyFinishPhoto(v && v.at); });
   socket.on('gpsConfigUpdate', (c) => { if(typeof gpsApplicaConfig === 'function') gpsApplicaConfig(c); });
+  socket.on('pisteUpdate', (d) => { if(role === 'box' && d && typeof pisteApplica === 'function') pisteApplica(d.elenco, d.attiva); });
   socket.on('gpsPos', (p) => { if(typeof gpsRicevi === 'function') gpsRicevi(p); });
   socket.on('passoUpdate', passoRicevi);
   socket.on('strategiaUpdate', (r) => { if(typeof strategiaRicevi === 'function') strategiaRicevi(r); });

@@ -41,6 +41,9 @@ function getRoomState(code) {
       // GPS e automatismi (spenti all'inizio): zona del box e zona del rifornimento, con il
       // raggio in metri. Lo imposta il box; la posizione la manda il telefono dell'auto.
       gps: { on: false, box: null, refuel: null, refuelPoly: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 60, traguardo: null, giroRif: null, lancioS: 240, tracciato: null, limiteKmh: 60, allineamento: null }, // tracciato: linea della pista (punti toccati sulla mappa, giro chiuso); limiteKmh: limite in corsia box; allineamento: ultimo spostamento da calibrazione {dx,dy,n,scarto,at}; // traguardo: linea virtuale (2 punti); giroRif: giro di riferimento {t, p:[[lat,lng,s],...]} per la fascia di lancio; lancioS: da quanti secondi prima dello zero compare la fascia in auto; // refuelPoly: area di rifornimento disegnata sulla mappa (ha la precedenza sul cerchio refuel+rRefuel); // corsia: percorso registrato della corsia box; larg: metri di tolleranza dalla linea; fermoS: secondi fermi in corsia oltre i quali si chiede se e' un cambio pilota
+      // Libreria delle piste (vedi piste.js): l'elenco (nome, quando, elementi) viaggia con lo stato; i dati veri
+      // stanno in `pisteLib` (non enumerabile: non va all'auto) e si chiedono con `pisteChiedi`.
+      piste: [], pistaAttiva: null,
       finishPhotoAt: null, // quando e' stata caricata la foto finale della squadra (null = quella predefinita)
       lastFlash: null,
       // Messaggi dall'auto, i piu' recenti: li riceve chi si ricollega (per esempio
@@ -117,8 +120,9 @@ function getRoomState(code) {
       },
       // true finche' nessun dispositivo ha rimandato i propri valori dopo un
       // riavvio del server; si spegne da solo, una voce alla volta.
-      fresh: { fuel: true, buttons: true, race: true, ponte: true, timerSrc: true, aub: true, layout: true, soglia: true, gps: true, foto: true, timer: true },
+      fresh: { fuel: true, buttons: true, race: true, ponte: true, timerSrc: true, aub: true, layout: true, soglia: true, gps: true, foto: true, timer: true, piste: true },
     });
+    Object.defineProperty(rooms.get(code), "pisteLib", { value: {}, writable: true, enumerable: false });
   }
   return rooms.get(code);
 }

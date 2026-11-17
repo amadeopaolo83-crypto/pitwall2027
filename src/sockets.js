@@ -21,7 +21,7 @@ const crypto = require("crypto");
 const SOLO_BOX = new Set([
   "timerStartSet", "timerStartControl", "timerControl", "timerRaceSet", "timerRaceControl", "timerSource",
   "timerTestSpeed", "timerDebugJump", "finishConfigUpdate", "raceStart", "raceStop", "historyClear",
-  "flashMessage", "dayModeUpdate", "passoAzzera", "aubDisconnect", "ponteDisconnect", "timerRestore",
+  "flashMessage", "dayModeUpdate", "passoAzzera", "pistaSalva", "pistaCarica", "pistaElimina", "pistaNuova", "pisteChiedi", "pisteRipristino", "aubDisconnect", "ponteDisconnect", "timerRestore",
   "fuelSystemUpdate", "fuelUpdate", "autonomyUpdate", "quickButtonsUpdate", "flashPresetsUpdate",
   "boxCedi", "boxRiprendi", "boxPrendi", "cambioDomanda", "cambioRisposta", "cambioAzzera",
 ]);
@@ -33,7 +33,7 @@ const SOLO_PRIMARIO = new Set([
   "timerStartSet", "timerStartControl", "timerControl", "timerRaceSet", "timerRaceControl", "timerSource", "timerTestSpeed",
   "timerDebugJump", "finishConfigUpdate", "finishPhotoUpdate", "finishTrigger", "raceStart", "raceStop", "historyClear",
   "dayModeUpdate", "flashPresetsUpdate", "quickButtonsUpdate", "timingViewUpdate", "autoLayoutUpdate", "sogliaGapUpdate",
-  "gpsConfigUpdate", "passoAzzera", "aubConnect", "aubDisconnect", "ponteConnect", "ponteDisconnect", "cambioDomanda", "cambioAzzera",
+  "gpsConfigUpdate", "pistaSalva", "pistaCarica", "pistaElimina", "pistaNuova", "passoAzzera", "aubConnect", "aubDisconnect", "ponteConnect", "ponteDisconnect", "cambioDomanda", "cambioAzzera",
 ]);
 const pinAttivo = () => String(process.env.BOX_PIN || "");
 function pinGiusto(dato) {
@@ -118,7 +118,7 @@ function registra(io) {
     const SALVA = new Set([
       "fuelSystemUpdate", "autonomyUpdate", "dayModeUpdate", "quickButtonsUpdate", "flashPresetsUpdate",
       "timingViewUpdate", "autoLayoutUpdate", "sogliaGapUpdate", "timerStartSet", "timerRaceSet", "finishConfigUpdate",
-      "aubConnect", "ponteConnect", "gpsConfigUpdate", "gpsGiroRif",
+      "aubConnect", "ponteConnect", "gpsConfigUpdate", "gpsGiroRif", "pistaSalva", "pistaCarica", "pistaElimina", "pistaNuova", "pisteRipristino",
       "timerStartControl", "timerControl", "timerRaceControl", "raceTimerAutoStart", "finishTrigger", "timerDebugJump", "timerRestore",
     ]);
     const registraEvento = (evento) => {
@@ -372,6 +372,89 @@ function registra(io) {
       state.gps = archivio.pulisciGps(state.gps, dati);
       state.fresh.gps = false;
       io.to(joinedCode).emit("gpsConfigUpdate", state.gps);
+    });
+
+    // ---------- libreria delle piste (solo box) ----------
+    // Salva la pista attuale (zone, corsia, traguardo, giro di riferimento, tracciato...) con un nome; la ricarica
+    // quando serve, tra una gara e l'altra. Prima di caricarne un'altra o di partire da zero, la pista attuale
+    // si copia da sola in "(copia automatica)": un tocco sbagliato non perde il lavoro.
+    const COPIA_AUTO = "(copia automatica)";
+    const pisteFine = (state) => {
+      state.piste = archivio.elencoPiste(state);
+      io.to(joinedCode).emit("pisteUpdate", { elenco: state.piste, attiva: state.pistaAttiva });
+    };
+    const copiaAutomatica = (state) => {
+      const dati = archivio.pulisciPista(state.gps);
+      if (dati) state.pisteLib[COPIA_AUTO] = { at: Date.now(), dati };
+    };
+    const sostituisciPista = (state, pezzo, attiva) => {
+      state.gps = archivio.pulisciGps(state.gps, pezzo);
+      state.pistaAttiva = attiva;
+      state.fresh.gps = false;
+      io.to(joinedCode).emit("gpsConfigUpdate", state.gps);
+    };
+    socket.on("pistaSalva", ({ nome } = {}, ack) => {
+      const risp = (o) => { if (typeof ack === "function") ack(o); };
+      if (!joinedCode || joinedRole !== "box") return risp({ ok: false });
+      const state = getRoomState(joinedCode);
+      const n = archivio.nomePista(nome);
+      if (!n || n === COPIA_AUTO) return risp({ ok: false, error: "nome" });
+      const dati = archivio.pulisciPista(state.gps);
+      if (!dati) return risp({ ok: false, error: "vuota" });
+      const nuova = !state.pisteLib[n];
+      const quante = Object.keys(state.pisteLib).filter((k) => k !== COPIA_AUTO).length;
+      if (nuova && quante >= archivio.PISTE_MAX) return risp({ ok: false, error: "piene" });
+      state.pisteLib[n] = { at: Date.now(), dati };
+      state.pistaAttiva = n;
+      pisteFine(state);
+      risp({ ok: true, nome: n, nuova });
+    });
+    socket.on("pistaCarica", ({ nome } = {}, ack) => {
+      const risp = (o) => { if (typeof ack === "function") ack(o); };
+      if (!joinedCode || joinedRole !== "box") return risp({ ok: false });
+      const state = getRoomState(joinedCode);
+      const n = archivio.nomePista(nome);
+      const p = n && Object.prototype.hasOwnProperty.call(state.pisteLib, n) ? state.pisteLib[n] : null;
+      if (!p) return risp({ ok: false, error: "manca" });
+      if (n !== COPIA_AUTO) copiaAutomatica(state);
+      sostituisciPista(state, archivio.pistaComePezzo(p.dati), n === COPIA_AUTO ? null : n);
+      pisteFine(state);
+      risp({ ok: true, nome: n });
+    });
+    socket.on("pistaNuova", (_d, ack) => {
+      const risp = (o) => { if (typeof ack === "function") ack(o); };
+      if (!joinedCode || joinedRole !== "box") return risp({ ok: false });
+      const state = getRoomState(joinedCode);
+      copiaAutomatica(state);
+      sostituisciPista(state, archivio.pistaComePezzo({}), null);
+      pisteFine(state);
+      risp({ ok: true });
+    });
+    socket.on("pistaElimina", ({ nome } = {}, ack) => {
+      const risp = (o) => { if (typeof ack === "function") ack(o); };
+      if (!joinedCode || joinedRole !== "box") return risp({ ok: false });
+      const state = getRoomState(joinedCode);
+      const n = archivio.nomePista(nome);
+      if (!n || !Object.prototype.hasOwnProperty.call(state.pisteLib, n)) return risp({ ok: false, error: "manca" });
+      delete state.pisteLib[n];
+      if (state.pistaAttiva === n) state.pistaAttiva = null;
+      pisteFine(state);
+      risp({ ok: true });
+    });
+    // I dati veri della libreria (servono al box per la sua copia sul telefono).
+    socket.on("pisteChiedi", (ack) => {
+      if (!joinedCode || joinedRole !== "box" || typeof ack !== "function") return;
+      const state = getRoomState(joinedCode);
+      ack({ lib: state.pisteLib, attiva: state.pistaAttiva });
+    });
+    // Dopo un riavvio del server senza archivio: il box rimanda la sua copia (vale una volta sola).
+    socket.on("pisteRipristino", ({ lib } = {}) => {
+      if (!joinedCode || joinedRole !== "box" || !lib || typeof lib !== "object") return;
+      const state = getRoomState(joinedCode);
+      if (!state.fresh.piste) return;
+      archivio.applicaPiste(state, lib);
+      state.fresh.piste = false;
+      pisteFine(state);
     });
 
     // AUTO -> tutti: giro di riferimento registrato dall'auto passando sul traguardo virtuale
