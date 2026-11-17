@@ -60,9 +60,9 @@
     r.onload = () => { try { const d = JSON.parse(r.result); if (d.tipo !== 'pitcomm-circuito' || !d.gps) throw new Error('non e’ un circuito di PitComm'); caricaCircuito(d.gps, f.name); } catch (e) { $('circ').textContent = 'File non valido: ' + e.message; } };
     r.readAsText(f);
   };
-  // Scenario per vedere i colori dei distacchi sull'auto: nessuna sosta degli altri, rivali fissi a 10 s, noi alterniamo +2% e -2% ogni 3 giri.
+  // Scenario per vedere i colori dei distacchi sull'auto: nessuna sosta degli altri, rivali fissi a 10 s, noi alterniamo +2% e -2% ogni 2 giri.
   $('provaColori').onclick = () => {
-    $('piano').value = 'lancio 300\n20\nritmo 3 3 102\nritmo 7 3 98\nritmo 11 3 102\nritmo 15 3 98';
+    $('piano').value = 'lancio 300\n24\nritmo 2 2 102\nritmo 4 2 98\nritmo 6 2 102\nritmo 8 2 98\nritmo 10 2 102\nritmo 12 2 98\nritmo 14 2 102\nritmo 16 2 98';
     $('fissi').checked = true; $('centro').checked = false;
     $('stato').textContent = 'Scenario prova colori pronto: premi Avvia. Sull\u2019auto: verde quando il distacco migliora, giallo quando peggiora, a ogni giro.';
   };
