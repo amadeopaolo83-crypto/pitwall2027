@@ -103,5 +103,29 @@ const tracciato = Array.from({ length: 12 }, (_, i) => P(46.0 + 0.0005 * Math.co
   const box3 = nuovo(); await entra(box3, 'LIM', 'box'); box3.invia('gpsConfigUpdate', { box: P(10, 10) });
   let okN = 0; for (let i = 0; i < 25; i++) { const x = await chiedi(box3, 'pistaSalva', { nome: 'P' + i }); if (x.ok) okN++; }
   V.ok('al massimo 20 piste (e si puo\' sempre aggiornarne una)', okN === 20 && (await chiedi(box3, 'pistaSalva', { nome: 'P0' })).ok === true, okN);
+  // giri (storico del passo e distacco giro per giro): restano a fine gara; si cancellano con pista nuova/caricata o nuovo lancio
+  {
+    const passoM = require(C.SRC + '/passo.js'); passoM.init(io); const bx = nuovo(); await entra(bx, 'GIR', 'box');
+    const metti = () => { passoM.registra('GIR', [{ numero: '1', giri: 1, ultimoGiro: 100, migliorGiro: null, pos: 1 }, { numero: '2', giri: 1, ultimoGiro: 101, migliorGiro: null, pos: 2 }], '1', Date.now());
+      passoM.registra('GIR', [{ numero: '1', giri: 2, ultimoGiro: 100.2, migliorGiro: 100.2, pos: 1 }, { numero: '2', giri: 2, ultimoGiro: 101, migliorGiro: 101, pos: 2 }], '1', Date.now() + 100000); };
+    const giri = () => { const r = passoM.riepilogo('GIR'); return r && r.mio && r.mio.giri; };
+    const sgn = () => bx.log.filter((e) => e[0] === 'passoAzzerato').length;
+    bx.invia('timerStartSet', { seconds: 300 }); bx.invia('timerRaceSet', { seconds: 600 });
+    metti(); V.ok('giri registrati', giri() === 2, giri());
+    bx.invia('finishTrigger', {}); bx.invia('timerDebugJump', { preset: 'reset' }); bx.invia('timerControl', { action: 'stop' });
+    V.ok('fine gara, chiusura arrivo e Azzera timer: i giri restano', giri() === 2 && sgn() === 0, { g: giri(), s: sgn() });
+    bx.invia('timerStartControl', { action: 'start' });
+    V.ok('nuovo conto alla rovescia di lancio: i giri si cancellano (e i telefoni lo sanno)', sgn() === 1 && !(giri() > 0), { g: giri(), s: sgn() });
+    metti(); await new Promise((r) => setTimeout(r, 700)); bx.invia('timerStartControl', { action: 'pause' }); bx.invia('timerStartControl', { action: 'start' });
+    V.ok('pausa e ripresa del lancio non cancellano', giri() === 2 && sgn() === 1, { g: giri(), s: sgn() });
+    bx.invia('timerControl', { action: 'stop' }); bx.invia('timerControl', { action: 'start' });
+    V.ok('anche "Avvia" generale (lancio intero) cancella i giri vecchi', sgn() === 2 && !(giri() > 0), { g: giri(), s: sgn() });
+    metti(); bx.invia('gpsConfigUpdate', { box: P(1, 1) }); await chiedi(bx, 'pistaSalva', { nome: 'GA' });
+    V.ok('salvare una pista non cancella i giri', giri() === 2 && sgn() === 2, { g: giri(), s: sgn() });
+    await chiedi(bx, 'pistaCarica', { nome: 'GA' });
+    V.ok('pista caricata: giri cancellati', sgn() === 3 && !(giri() > 0), { g: giri(), s: sgn() });
+    metti(); await chiedi(bx, 'pistaNuova');
+    V.ok('pista nuova: giri cancellati', sgn() === 4 && !(giri() > 0), { g: giri(), s: sgn() });
+  }
   V.fine();
 })();

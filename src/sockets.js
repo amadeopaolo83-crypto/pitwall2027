@@ -418,6 +418,7 @@ function registra(io) {
       if (!p) return risp({ ok: false, error: "manca" });
       if (n !== COPIA_AUTO) copiaAutomatica(state);
       sostituisciPista(state, archivio.pistaComePezzo(p.dati), n === COPIA_AUTO ? null : n);
+      passo.azzera(joinedCode); // i giri restano a fine gara (statistica): si cancellano con una pista nuova o caricata
       pisteFine(state);
       risp({ ok: true, nome: n });
     });
@@ -427,6 +428,7 @@ function registra(io) {
       const state = getRoomState(joinedCode);
       copiaAutomatica(state);
       sostituisciPista(state, archivio.pistaComePezzo({}), null);
+      passo.azzera(joinedCode);
       pisteFine(state);
       risp({ ok: true });
     });
@@ -614,6 +616,7 @@ function registra(io) {
       const t = getRoomState(joinedCode).raceTimer;
       if (t.phase !== "start") return;
       if (action === "start") {
+        if (!t.startRunning && t.startSeconds > 0 && currentRemaining(t.startRemaining, t.startUpdatedAt, false, t.speed) >= t.startSeconds - 0.5) passo.azzera(joinedCode); // nuovo lancio: giri della sessione precedente
         t.startRunning = true;
         t.startUpdatedAt = Date.now();
       } else if (action === "pause") {
@@ -651,6 +654,9 @@ function registra(io) {
             t.raceRunning = true;
             t.raceUpdatedAt = now;
           } else {
+            // Nuova sessione di lancio (conto alla rovescia che parte intero): si cancellano i giri della sessione precedente.
+            // A fine gara, "Azzera" o chiudere l'arrivo NON li toccano: restano per la statistica.
+            if (t.startSeconds > 0 && startRem >= t.startSeconds - 0.5) passo.azzera(joinedCode);
             t.startRunning = true;
             t.startUpdatedAt = now;
           }
