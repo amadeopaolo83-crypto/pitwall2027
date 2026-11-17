@@ -57,6 +57,7 @@ public class MainActivity extends Activity {
     static final String URL_PREDEFINITO = "https://pitwall2027.onrender.com";
     static final String CANALE_AVVISI = "pitcomm_sirena";
     private static final int RC_PERMESSI = 1;
+    private static final int RC_NOTIFICHE = 2;
     private static final int RC_POSIZIONE = 2;
 
     private SharedPreferences prefs;
@@ -110,7 +111,7 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false); // la sirena deve poter suonare da sola
         s.setGeolocationEnabled(true);
-        s.setUserAgentString(s.getUserAgentString() + " PitCommAndroid/1.2");
+        s.setUserAgentString(s.getUserAgentString() + " PitCommAndroid/2.0");
         w.addJavascriptInterface(new Ponte(), "PitCommAndroid");
         w.setWebViewClient(new WebViewClient() {
             @Override
@@ -297,6 +298,12 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int codice, String[] permessi, int[] esiti) {
         super.onRequestPermissionsResult(codice, permessi, esiti);
+        if (codice == RC_NOTIFICHE) {
+            // Tasto "Attiva le notifiche" nelle Impostazioni: se Android non le ha concesse (rifiutate piu' volte il sistema
+            // non mostra piu' la domanda) si apre la pagina delle notifiche dell'app, dove si attivano a mano.
+            if (!getSystemService(NotificationManager.class).areNotificationsEnabled()) apriImpostazioniNotifiche();
+            return;
+        }
         permessiInCorso = false;
         boolean posizione = KeepAliveService.posizioneConcessa(this);
         // La pagina aspettava la posizione: si risponde con lo stato vero del permesso.
@@ -393,7 +400,30 @@ public class MainActivity extends Activity {
 
     // ---------- cio' che la web app puo' chiedere all'app ----------
 
+    private void apriImpostazioniNotifiche() {
+        try {
+            Intent i = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+            startActivity(i);
+        } catch (Exception e) {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())));
+        }
+    }
+
+    private void richiediNotifiche() {
+        boolean attive = getSystemService(NotificationManager.class).areNotificationsEnabled();
+        if (attive) return;
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, RC_NOTIFICHE);
+        } else {
+            apriImpostazioniNotifiche();
+        }
+    }
+
     private class Ponte {
+        /** Tasto "Attiva le notifiche": chiede il permesso, oppure apre le impostazioni del telefono se e' stato rifiutato. */
+        @JavascriptInterface
+        public void attivaNotifiche() { runOnUiThread(() -> richiediNotifiche()); }
+
         /** Notifica vera con suono e vibrazione (funziona anche a schermo spento). */
         @JavascriptInterface
         public void notifica(String titolo, String testo) {
@@ -417,7 +447,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versione() { return "1.2"; }
+        public String versione() { return "2.0"; }
 
         /** Stato dei permessi del telefono, per mostrarlo nella pagina: JSON. */
         @JavascriptInterface
@@ -425,7 +455,7 @@ public class MainActivity extends Activity {
             try {
                 PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
                 JSONObject j = new JSONObject();
-                j.put("versione", "1.2");
+                j.put("versione", "2.0");
                 j.put("notifiche", getSystemService(NotificationManager.class).areNotificationsEnabled());
                 j.put("posizione", KeepAliveService.posizioneConcessa(MainActivity.this));
                 j.put("posizionePrecisa", checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED);

@@ -14,6 +14,9 @@ const gradle = fs.readFileSync(path.join(C.REPO, 'android', 'app', 'build.gradle
 V.ok('id applicazione diverso dalla vecchia PitComm', /applicationId '(?!it\.pitwall\.pitcomm')[\w.]+'/.test(gradle) && !/applicationId 'it\.pitwall\.pitcomm'/.test(gradle));
 V.ok('nome dell\'app nel manifest: PitWall 27', /android:label="PitWall 27"/.test(man));
 
+V.ok('Ponte: attivaNotifiche e pagina impostazioni notifiche', /public void attivaNotifiche\(\)/.test(act) && /ACTION_APP_NOTIFICATION_SETTINGS/.test(act));
+V.ok('canale avvisi con il suono della sirena', /setSound\(Uri\.parse\([\s\S]{0,120}R\.raw\.sirena/.test(act));
+
 // Manifest
 for (const p of ['FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_LOCATION', 'FOREGROUND_SERVICE_SPECIAL_USE', 'ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'POST_NOTIFICATIONS', 'WAKE_LOCK', 'REQUEST_IGNORE_BATTERY_OPTIMIZATIONS']) {
   V.ok('manifest: permesso ' + p, man.includes(`android.permission.${p}"`));

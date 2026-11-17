@@ -212,7 +212,42 @@ function avvisaMessaggio(testo){
   notificaAndroid('PitWall 27 \u00b7 messaggio dall\u2019auto', testo || 'Nuovo messaggio');
 }
 
+// Stato delle notifiche del telefono e tasto per riattivarle (app Android: permesso o pagina delle impostazioni; browser: permesso del sito).
+function permessiRender(){
+  const el = $('permessiStato'); if(!el) return;
+  let on = null;
+  try{
+    if(window.PitCommAndroid && PitCommAndroid.stato) on = !!JSON.parse(PitCommAndroid.stato()).notifiche;
+    else if(typeof Notification !== 'undefined') on = Notification.permission === 'granted' ? true : (Notification.permission === 'denied' ? false : null);
+  }catch(e){}
+  el.textContent = on === true ? 'Notifiche attive' : (on === false ? 'Notifiche NON attive: tocca il tasto per attivarle' : 'Notifiche non ancora attivate');
+  el.style.color = on === false ? 'var(--red, #ff5a5a)' : 'var(--muted)';
+}
+async function attivaNotificheTelefono(){
+  const aiuto = $('permessiAiuto');
+  try{
+    if(window.PitCommAndroid && PitCommAndroid.attivaNotifiche){
+      PitCommAndroid.attivaNotifiche();
+      setTimeout(permessiRender, 1500); setTimeout(permessiRender, 5000);
+      return;
+    }
+    if(typeof Notification === 'undefined'){
+      if(aiuto) aiuto.textContent = 'Questo browser non supporta le notifiche. Su iPhone: aggiungi prima l\u2019app alla schermata Home e aprila da li.';
+      return;
+    }
+    if(Notification.permission === 'denied'){
+      if(aiuto) aiuto.textContent = 'Il browser le ha bloccate: tocca il lucchetto vicino all\u2019indirizzo, Notifiche, Consenti. Su iPhone: Impostazioni del telefono, Notifiche, PitWall 27.';
+      return;
+    }
+    const p = await Notification.requestPermission();
+    if(p === 'granted' && typeof setupPushNotifications === 'function') setupPushNotifications();
+    permessiRender();
+  }catch(e){ if(aiuto) aiuto.textContent = 'Non riesco ad attivarle da qui: apri le impostazioni del telefono, Notifiche.'; }
+}
+document.addEventListener('visibilitychange', () => { if(!document.hidden) permessiRender(); });
+
 function renderAlarmCard(){
+  permessiRender();
   if($('provaNotificaRiga')) $('provaNotificaRiga').hidden = !window.PitCommAndroid;
   const s = loadSirenSettings();
   if($('sirenToggle')) $('sirenToggle').checked = s.on;
