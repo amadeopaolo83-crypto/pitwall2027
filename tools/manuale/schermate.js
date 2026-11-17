@@ -78,6 +78,9 @@ srv.listen(8765, async () => {
   await autoPg(844, 390, aut, '03-auto-notte', true);
   await autoPg(390, 800, aut, '04-auto-verticale');
   await autoPg(844, 390, () => { applyTimerState({ phase: 'start', startSeconds: 900, startRemaining: 600, startRunning: true, startUpdatedAt: Date.now(), raceSeconds: 21600, raceRemaining: 21600, raceRunning: false, raceUpdatedAt: Date.now(), speed: 1, finishMode: 'manual', finishBackground: 'photo', finishTriggered: false, source: 'manual' }); }, '05-auto-partenza');
+  await autoPg(844, 390, () => { applyTimerState({ phase: 'start', startSeconds: 900, startRemaining: 170, startRunning: true, startUpdatedAt: Date.now(), raceSeconds: 21600, raceRemaining: 21600, raceRunning: false, raceUpdatedAt: Date.now(), speed: 1, finishMode: 'manual', finishBackground: 'photo', finishTriggered: false, source: 'manual' });
+    gpsCfg.on = true; gpsCfg.lancioS = 240; gpsCfg.traguardo = [[45.0, 9.0], [45.0001, 9.0]]; laRiferimentoAttivo = () => ({ t: 100 }); laUltimoPunto = Date.now();
+    laRis = { fuori: false, e: -4.2, d: -3.2, aLinea: 172.8, eta1: 90, k: 2, r: 1, rel: 0.02 }; lancioAggiorna(); }, '08-auto-lancio');
   await autoPg(844, 390, () => { showFlash({ text: 'BOX BOX', color: '#e5322d', durationSeconds: 60 }); speechSynthesis.cancel(); }, '06-auto-messaggio');
   { const p = await nuova(844, 390, 'auto'); await p.evaluate(([t]) => { code = 'FLATSIX'; applyFinishPhoto(null); renderFinishScreen(Object.assign({}, t, { phase: 'finished', finishBackground: 'photo', finishPosition: 2, finishDriverName: 'Mario Rossi' })); }, [timer('finished')]); await p.waitForTimeout(800); await p.screenshot({ path: path.join(OUT, '07-auto-arrivo.png') }); await p.close(); }
 
