@@ -134,7 +134,7 @@
   <div id="boxRuoloBar" class="box-ruolo" hidden></div>
   <button id="changeRoleBtn" onclick="resetRole()">◄ cambia ruolo / codice</button>
   <div class="cambio-avviso" id="cambioAvviso" hidden>
-    <span id="cambioAvvisoTesto">Auto ferma in corsia box: era un cambio pilota?</span>
+    <span id="cambioAvvisoTesto">Auto ferma ai box: era un cambio pilota?</span>
     <button class="btn small primary" onclick="gpsRispostaCambio(true)">Sì, cambio</button>
     <button class="btn small" onclick="gpsRispostaCambio(false)">No</button>
   </div>
@@ -172,7 +172,7 @@
       <button class="btn seg-btn" id="segViewCat2" onclick="setTimingView('categoria')">Categoria</button>
     </div>
   </div>
-  <!-- Turno pilota: cambio a mano, domanda se l'auto si ferma in corsia box -->
+  <!-- Turno pilota: cambio a mano, domanda se l'auto si ferma in corsia, zona box o rifornimento -->
   <div class="card" id="turnoCard">
     <h3>Turno pilota</h3>
     <div class="row"><span class="mono" id="turnoTesto" style="font-size:13px;line-height:1.5;">—</span></div>
@@ -184,7 +184,7 @@
       </div>
     </div>
     <div class="row"><button class="btn primary" style="width:100%" onclick="gpsCambioManuale(this)">Cambio pilota adesso</button></div>
-    <div class="row"><span class="mono" style="font-size:11px;color:var(--muted);line-height:1.4;">Il tempo del turno conta solo con l'auto in pista (fermo ai box non conta). Se l'auto si ferma in corsia box il telefono suona e chiede se era un cambio pilota. Lo stint massimo si imposta in Impostazioni.</span></div>
+    <div class="row"><span class="mono" style="font-size:11px;color:var(--muted);line-height:1.4;">Il tempo del turno conta solo con l'auto in pista (fermo ai box non conta). Se l'auto resta ferma più di 20 secondi (impostabile) in corsia box, zona box o rifornimento il telefono suona e chiede se era un cambio pilota. Lo stint massimo si imposta in Impostazioni.</span></div>
   </div>
   <!-- 1. Carburante e stato in pista / ai box -->
   <div class="card">
@@ -497,7 +497,7 @@
     <div class="row val-riga"><span>Tolleranza dalla linea della corsia (m)</span>
       <input type="number" id="gpsLarg" min="2" max="40" step="1" style="text-align:center;" onchange="gpsNumero('larg', this, 2, 40)">
     </div>
-    <div class="row val-riga"><span>Auto ferma in corsia oltre (s): chiede se è un cambio pilota</span>
+    <div class="row val-riga"><span>Auto ferma in corsia, box o rifornimento oltre (s): chiede se è un cambio pilota</span>
       <input type="number" id="gpsFermoS" min="5" max="900" step="5" style="text-align:center;" onchange="gpsNumero('fermoS', this, 5, 900)">
     </div>
     <div class="row gps-griglia">
@@ -610,7 +610,7 @@
 <script src="js/passo.js?v=47"></script>
 <script src="js/strategia.js?v=47"></script>
 <script src="js/cruscotto.js?v=50"></script>
-<script src="js/gps.js?v=51"></script>
+<script src="js/gps.js?v=52"></script>
 <script src="js/piste.js?v=1"></script>
 <script src="js/lancio.js?v=48"></script>
 <script src="js/mappa.js?v=48"></script>

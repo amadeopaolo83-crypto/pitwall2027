@@ -315,7 +315,7 @@
       box: ll({ x: -55, y: -R + 28 }),
       refuelPoly: [{ x: 50, y: -R + 22 }, { x: 95, y: -R + 22 }, { x: 95, y: -R + 36 }, { x: 50, y: -R + 36 }].map(ll),
       corsia,
-      rBox: 10, rRefuel: 25, larg: 8, fermoS: 60, limiteKmh: 60,
+      rBox: 10, rRefuel: 25, larg: 8, fermoS: 20, limiteKmh: 60,
     };
   }
 

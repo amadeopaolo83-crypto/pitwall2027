@@ -25,7 +25,7 @@ const GPS_TRACCIATO_M = 10;    // entro tanti metri dal tracciato disegnato = su
 const GPS_ATTESA_PISTA_MS = 3000; // per tornare "in pista" basta questo (si riparte, non serve aspettare)
 const GPS_PASSO_REG_M = 3;     // registrazione corsia: un punto ogni tanti metri
 
-let gpsCfg = { on: false, box: null, refuel: null, refuelPoly: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 60, traguardo: null, giroRif: null, lancioS: 240, tracciato: null, limiteKmh: 60, allineamento: null };
+let gpsCfg = { on: false, box: null, refuel: null, refuelPoly: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 20, traguardo: null, giroRif: null, lancioS: 240, tracciato: null, limiteKmh: 60, allineamento: null };
 let gpsUltima = null;          // ultimo punto ricevuto { lat, lng, acc, t }
 let gpsUltimaBuona = 0;        // quando e' arrivato l'ultimo punto preciso
 let gpsStato = null;           // 'pista' | 'box' | 'rifornimento' (confermato)
@@ -445,7 +445,7 @@ function gpsPitChiudi(e, st){
   return true;
 }
 
-// ---------- cambio pilota: fermi dentro la corsia box oltre la soglia ----------
+// ---------- cambio pilota: fermi in corsia box, zona box o zona rifornimento oltre la soglia (20 s di partenza) ----------
 
 // Distanza in metri dal percorso registrato della corsia (infinita se non c'e').
 function gpsDistCorsia(p){
@@ -502,7 +502,8 @@ function gpsAggiornaFermo(p, zona){
       gpsCambioFatto = false;
     }
   }
-  gpsInCorsia = gpsCfg.corsia ? (gpsDistCorsia(p) <= gpsCfg.larg || zona === 'box') : zona !== 'pista';
+  // area dove la sosta lunga fa chiedere "era un cambio pilota?": corsia box, zona box o zona rifornimento
+  gpsInCorsia = (!!gpsCfg.corsia && gpsDistCorsia(p) <= gpsCfg.larg) || zona !== 'pista';
   gpsControllaFermo();
 }
 
@@ -516,8 +517,8 @@ function gpsControllaFermo(){
     if(socket && socket.connected) socket.emit('cambioDomanda', { ancoraDa: gpsAncoraDa });
     try{ if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }catch(e){}
     try{ if(typeof playAlertBeep === 'function') playAlertBeep(); }catch(e){}
-    if(typeof notificaAndroid === 'function') notificaAndroid('PitComm', 'Auto ferma in corsia box: era un cambio pilota?');
-    notificaLocale('PitComm: cambio pilota?', 'Auto ferma in corsia box: era un cambio pilota?', 'pitcomm-cambio');
+    if(typeof notificaAndroid === 'function') notificaAndroid('PitComm', 'Auto ferma ai box: era un cambio pilota?');
+    notificaLocale('PitComm: cambio pilota?', 'Auto ferma ai box: era un cambio pilota?', 'pitcomm-cambio');
     gpsRender();
   }
 }
@@ -538,8 +539,8 @@ function gpsDomandaRemota(d){
   if(d && Number.isFinite(d.ancoraDa)) gpsAncoraDa = d.ancoraDa;
   try{ if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }catch(e){}
   try{ if(typeof playAlertBeep === 'function') playAlertBeep(); }catch(e){}
-  if(typeof notificaAndroid === 'function') notificaAndroid('PitComm', 'Auto ferma in corsia box: era un cambio pilota?');
-    notificaLocale('PitComm: cambio pilota?', 'Auto ferma in corsia box: era un cambio pilota?', 'pitcomm-cambio');
+  if(typeof notificaAndroid === 'function') notificaAndroid('PitComm', 'Auto ferma ai box: era un cambio pilota?');
+    notificaLocale('PitComm: cambio pilota?', 'Auto ferma ai box: era un cambio pilota?', 'pitcomm-cambio');
   gpsRender();
 }
 
@@ -674,8 +675,8 @@ function gpsRender(){
   if(dom){
     dom.hidden = !(gpsCfg.on && gpsChiede);
     if(!dom.hidden && $('gpsDomandaTesto')) $('gpsDomandaTesto').textContent = gpsChiedeRipartita
-      ? 'L\u2019auto e\u2019 ripartita dopo ' + gpsMinSec(gpsChiedeDurata * 1000) + ' ferma in corsia box: era un cambio pilota?'
-      : 'Auto ferma da ' + gpsMinSec(Date.now() - gpsAncoraDa) + ' in corsia box: era un cambio pilota?';
+      ? 'L\u2019auto e\u2019 ripartita dopo ' + gpsMinSec(gpsChiedeDurata * 1000) + ' ferma ai box: era un cambio pilota?'
+      : 'Auto ferma da ' + gpsMinSec(Date.now() - gpsAncoraDa) + ' ai box: era un cambio pilota?';
   }
   const riga = $('gpsRiga');
   if(riga){ riga.textContent = gpsRiga(); riga.hidden = !gpsCfg.on; }

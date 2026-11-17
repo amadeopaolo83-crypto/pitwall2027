@@ -246,7 +246,7 @@ const eNumero = (x) => typeof x === "number" && Number.isFinite(x);
 // tracciato, raggi, limite, allineamento); mai l'interruttore `on`. Stessa validazione di pulisciGps.
 const PISTE_MAX = 20;
 const CAMPI_PISTA = ["box", "refuel", "refuelPoly", "rBox", "rRefuel", "corsia", "larg", "fermoS", "traguardo", "giroRif", "lancioS", "tracciato", "limiteKmh", "allineamento"];
-const PISTA_VUOTA = { on: false, box: null, refuel: null, refuelPoly: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 60, traguardo: null, giroRif: null, lancioS: 240, tracciato: null, limiteKmh: 60, allineamento: null };
+const PISTA_VUOTA = { on: false, box: null, refuel: null, refuelPoly: null, rBox: 10, rRefuel: 25, corsia: null, larg: 8, fermoS: 20, traguardo: null, giroRif: null, lancioS: 240, tracciato: null, limiteKmh: 60, allineamento: null };
 const ELEMENTI_PISTA = ["box", "refuel", "refuelPoly", "corsia", "traguardo", "giroRif", "tracciato"];
 
 function nomePista(n) {

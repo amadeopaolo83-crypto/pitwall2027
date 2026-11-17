@@ -43,6 +43,7 @@ box e auto (PWA + server Node + involucro Android). Questo repository (`Pitwall2
 
 - Simulatore, prova colori: casella "rivali fissi" e pulsante "Scenario prova colori" in `sim.html` (`fissi` in `simponte.js`: gli altri girano al nostro ritmo, senza soste, a 10 s l'uno dall'altro; i distacchi cambiano solo con le righe `ritmo`). `passo.js`: giro 1 e tempi < 20 s (o < meta' del giro tipico) mai miglior giro.
 
+- Cambio pilota? (`gps.js`, `gpsAggiornaFermo/gpsControllaFermo`): la domanda parte se l'auto resta ferma oltre `fermoS` (predefinito 20 s, impostabile) in corsia box, zona box o zona rifornimento; fuori da queste mai. Lo stato "rifornimento" (consumo fermo) solo nella zona rifornimento.
 - Libreria piste (`public/js/piste.js`, scheda "Piste" in Impostazioni del box; server: eventi `pistaSalva/pistaCarica/pistaNuova/pistaElimina/pisteChiedi/pisteRipristino` in `sockets.js`, funzioni in `archivio.js`: `pulisciPista`, `elencoPiste`; max 20): una pista = parte "di circuito" del GPS (mai `on`). Dati in `S.pisteLib` (non enumerabile: non va all'auto), elenco in `S.piste`; salvata nell'archivio e copiata dal box in `pc_piste` (flag `fresh.piste`). Caricare o "nuova" copia prima la pista attuale in "(copia automatica)". Azioni che tolgono: doppio tocco.
 
 ## Da fare / aperto

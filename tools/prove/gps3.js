@@ -43,8 +43,17 @@ srv.listen(8773, async () => {
     pos(45.00055 + 0.00018, 9);             out.mossa = [gpsChiede, $('gpsDomanda').hidden];
     out.testoRipartita = $('gpsDomandaTesto').textContent;
     gpsChiedeRipartita = Date.now() - 181000; pos(45.00055 + 0.00036, 9); out.scaduta = [gpsChiede, $('gpsDomanda').hidden];   // dopo 180 s dalla ripartenza si chiude da sola
-    // 4) fermo ma fuori dalla corsia (23 m di lato): niente domanda
-    passo(45.0003, 9.0003, 80, 5);         out.fuoriCorsia = [gpsChiede, gpsInCorsia];
+    // 4) fermo nella zona rifornimento (23 m di lato dalla corsia): da quando vale la regola "corsia, box o rifornimento" la domanda c'e'
+    passo(45.0003, 9.0003, 80, 5);         out.inRifornimento = [gpsChiede, gpsInCorsia, gpsStato];
+    const azzera = () => { gpsChiede = false; gpsCambioFatto = false; gpsChiedeRipartita = 0; };
+    // ...ma fermo lontano da corsia, box e rifornimento (80 m): niente domanda
+    azzera(); passo(45.0003, 9.0010, 80, 5);  out.fuoriCorsia = [gpsChiede, gpsInCorsia];
+    // 4b) soglia di 20 s in ognuna delle tre aree (e mai fuori)
+    gpsApplicaConfig({ fermoS: 20 });
+    const prova = (lat, lng) => { azzera(); passo(lat, lng + 0.0030, 5, 5); azzera(); passo(lat, lng, 15, 5); const a = gpsChiede; passo(lat, lng, 10, 5); return [a, gpsChiede]; };
+    out.s20 = { corsia: prova(45.00055, 9), box: prova(45, 9.00005), rifornimento: prova(45.0003, 9.0003), fuori: prova(45.0003, 9.0012) };
+    out.s20stati = { box: (passo(45, 9.00005, 15, 5), gpsStato), rif: (passo(45.0003, 9.0003, 15, 5), gpsStato) };
+    gpsApplicaConfig({ fermoS: 60 }); azzera();
     // 5) fermo in corsia ma senza segnale buono (80 m di errore): niente
     passo(45.00055, 9, 80, 80);            out.puntiImprecisi = gpsChiede;
     // 6) risposta
@@ -70,7 +79,11 @@ srv.listen(8773, async () => {
   V.ok('pagina nascosta: notifica nativa', R.notifNascosta === 1);
   V.ok('l\'auto riparte con la domanda aperta: resta aperta (e lo dice)', J(R.mossa) === '[true,false]' && /ripartita/.test(R.testoRipartita), [R.mossa, R.testoRipartita]);
   V.ok('...e si chiude da sola dopo 180 s dalla ripartenza', J(R.scaduta) === '[false,true]', R.scaduta);
-  V.ok('fuori corsia: niente domanda', R.fuoriCorsia[0] === false && R.fuoriCorsia[1] === false, R.fuoriCorsia);
+  V.ok('fermo nella zona rifornimento: domanda "cambio pilota?"', R.inRifornimento[0] === true && R.inRifornimento[1] === true, R.inRifornimento);
+  V.ok('fuori da corsia, box e rifornimento: niente domanda', R.fuoriCorsia[0] === false && R.fuoriCorsia[1] === false, R.fuoriCorsia);
+  V.ok('soglia 20 s: dopo 15 s niente, dopo 25 s domanda, in corsia / zona box / rifornimento', ['corsia', 'box', 'rifornimento'].every((k) => R.s20[k][0] === false && R.s20[k][1] === true), R.s20);
+  V.ok('soglia 20 s: fuori dalle tre aree mai la domanda', R.s20.fuori[0] === false && R.s20.fuori[1] === false, R.s20.fuori);
+  V.ok('lo stato "rifornimento" solo nella zona rifornimento (nella zona box e\' "box")', R.s20stati.box === 'box' && R.s20stati.rif === 'rifornimento', R.s20stati);
   V.ok('punti imprecisi: niente domanda', R.puntiImprecisi === false);
   V.ok('domanda e risposta: un cambio', R.richiesta === true && R.cambi === 1, [R.richiesta, R.cambi]);
   V.ok('una sola domanda per sosta', R.unaVolta === false);
