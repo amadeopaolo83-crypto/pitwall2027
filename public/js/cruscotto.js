@@ -329,33 +329,12 @@ function crRenderCruscotto(){
 
 // Classifica di categoria in cima alla pagina Gara: noi, chi sta davanti, chi sta dietro.
 // "giro 12 · ultimo 1:41.2" della nostra vettura (dal passo: arriva dal live timing).
-// Giri fatti dalla PARTENZA della gara (il riscaldamento / lancio non conta): dal numero di giri del live timing si toglie
-// l'ultimo giro registrato prima dello zero del timer di gara. Nella simulazione e di norma il live timing parte da zero e non cambia nulla.
-function crInizioGaraMs(){
-  const t = (typeof lastTimerState !== 'undefined') ? lastTimerState : null;
-  if(!t || t.phase === 'start') return null;
-  let inizio = null;
-  try{
-    const el = t.raceSeconds - currentRemainingClient(t.raceRemaining, t.raceUpdatedAt, t.raceRunning, t.speed);
-    inizio = nowSync() - el * 1000 / (t.speed || 1);
-    if(t.raceRunning && el >= 0) save('pc_gara_inizio', inizio);
-    else { const v = load('pc_gara_inizio', null); if(typeof v === 'number') inizio = v; }
-  }catch(e){}
-  return inizio;
-}
-
+// Giri della nostra vettura: sono quelli UFFICIALI del live timing, che parte a contare solo allo start della gara
+// (i giri del riscaldamento servono all'allineamento GPS e non sono nel timing): niente da sottrarre.
 function crGiriGara(){
   const mio = (typeof passoRis !== 'undefined' && passoRis) ? passoRis.mio : null;
   if(!mio || mio.giri == null) return null;
-  const t = (typeof lastTimerState !== 'undefined') ? lastTimerState : null;
-  if(t && t.phase === 'start') return 0;                    // ancora nel lancio: la gara non e' partita
-  const inizio = crInizioGaraMs();
-  if(inizio == null || typeof passoLocale === 'undefined') return mio.giri;
-  let base = 0;
-  passoLocale.giri.forEach((g) => { if(g && g.ts < inizio && g.n > base) base = g.n; });
-  // Il contatore del live timing e' ripartito (nuova sessione / simulazione rifatta): i giri vecchi in memoria non contano.
-  if(base > mio.giri) base = 0;
-  return Math.max(0, mio.giri - base);
+  return mio.giri;
 }
 
 // "giri 12 · ultimo 1:41.2" della nostra vettura (dal passo: arriva dal live timing).

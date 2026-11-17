@@ -84,10 +84,10 @@ srv.listen(8799, async () => {
     r.senzaTimer = crGiriGara();
     return r;
   });
-  V.ok('NOI: i giri contano dalla partenza (15 del timing - 3 di riscaldamento = 12)', gg.n === 12 && /giri 12 · ultimo 1:41\.2/.test(gg.race), gg);
-  V.ok('NOI: nel lancio "giri 0"', /giri 0 /.test(gg.lancio), gg.lancio);
-  V.ok('NOI: gara in pausa, il conto non cambia', gg.pausa === 12, gg.pausa);
-  V.ok('NOI: contatore del live timing ripartito (giri vecchi in memoria, ora 4): mostra 4 e non 0', gg.ripartito === 4 && /giri 4 /.test(gg.ripartitoTxt), [gg.ripartito, gg.ripartitoTxt]);
+  V.ok('NOI: i giri sono quelli del timing (15), anche con giri di riscaldamento in memoria: niente sottrazioni', gg.n === 15 && /giri 15 · ultimo 1:41\.2/.test(gg.race), gg);
+  V.ok('NOI: nel lancio mostra i giri del timing (che non conta prima dello start)', /giri 15 /.test(gg.lancio), gg.lancio);
+  V.ok('NOI: gara in pausa, il conto non cambia', gg.pausa === 15, gg.pausa);
+  V.ok('NOI: contatore del live timing ripartito: mostra 4 e non 0', gg.ripartito === 4 && /giri 4 /.test(gg.ripartitoTxt), [gg.ripartito, gg.ripartitoTxt]);
   V.ok('NOI: senza timer o senza storico resta il conto del live timing', gg.senzaTimer === 15, gg.senzaTimer);
   await pg.evaluate(() => { passoRis = null; crRenderCategoria(); crRenderCruscotto(); });
   V.ok('senza dati del passo: niente scritte false', await pg.evaluate(() => !/giro/.test(document.querySelector('#catPosto .cat-noi').innerText) && !/NOI:/.test($('crCruscotto').innerText)));
