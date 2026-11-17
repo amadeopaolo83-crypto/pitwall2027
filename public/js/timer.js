@@ -195,13 +195,12 @@ function renderFinishScreen(t){
 // timer pronto per la prossima partenza.
 // ---------- foto della schermata finale ----------
 
-// Quale foto mostrare: quella caricata dalla squadra; altrimenti, per la squadra FLATSIX, la
-// foto di sempre; per le altre squadre nessuna foto (sfondo scuro).
+// Quale foto mostrare: quella caricata dalla squadra; altrimenti la foto predefinita (la stessa per tutte le squadre).
 function applyFinishPhoto(at){
   const img = $('finishPhotoImg'), prev = $('finishFotoPrev');
   let src = '';
   if(at) src = '/foto-finale/' + encodeURIComponent(code || '') + '?v=' + at;
-  else if(String(code || '').toUpperCase() === 'FLATSIX') src = 'finish-photo.jpg';
+  else src = 'finish-photo.jpg';
   [img, prev].forEach((el) => {
     if(!el) return;
     if(src) el.setAttribute('src', src); else el.removeAttribute('src');

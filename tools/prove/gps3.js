@@ -87,7 +87,7 @@ srv.listen(8773, async () => {
   V.ok('punti imprecisi: niente domanda', R.puntiImprecisi === false);
   V.ok('domanda e risposta: un cambio', R.richiesta === true && R.cambi === 1, [R.richiesta, R.cambi]);
   V.ok('una sola domanda per sosta', R.unaVolta === false);
-  V.ok('foto finale', R.fotoFlatsix === 'finish-photo.jpg' && R.fotoAltra === null && R.fotoCaricata === '/foto-finale/ALTRA?v=12345', [R.fotoFlatsix, R.fotoAltra, R.fotoCaricata]);
+  V.ok('foto finale', R.fotoFlatsix === 'finish-photo.jpg' && R.fotoAltra === 'finish-photo.jpg' && R.fotoCaricata === '/foto-finale/ALTRA?v=12345', [R.fotoFlatsix, R.fotoAltra, R.fotoCaricata]);
   V.ok('notifica del messaggio con il testo', R.msgNotif && R.msgNotif[1] === 'Pit tra 2 giri', R.msgNotif);
   V.ok('nessun errore nella pagina', C.erroriVeri(errs).length === 0, errs);
   await b.close(); srv.close(); V.fine();

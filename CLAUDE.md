@@ -52,4 +52,5 @@ box e auto (PWA + server Node + involucro Android). Questo repository (`Pitwall2
 - Scraper del live timing di Claudio (materiale in arrivo).
 - Strategia degli altri: fatta (`src/strategia.js` dai soli tempi, scheda nel Passo del box, `strategiaUpdate`); provata solo su finto ponte, da confrontare con un live timing vero (soste durante giri lenti per tutti o gara ferma invisibili, "cambio pilota?" e' una supposizione dalla durata).
 - Circuiti salvati per pista (file `.json` dal modo Circuito della mappa).
+- Schermata di arrivo: foto predefinita (`finish-photo.jpg`) per tutte le squadre se non ne caricano una; la X sull auto chiude l arrivo (reset consentito all auto solo a gara finita).
 - Giri e distacchi giro per giro (storico del passo): a fine gara NON si cancellano (statistica). Si azzerano con il tasto "Azzera lo storico dei giri" (anche il distacco giro per giro), con pista caricata o nuova, e con un nuovo lancio (conto alla rovescia che parte intero: `timerControl`/`timerStartControl` start); anche il server li azzera da solo se i giri scendono (altra sessione). Prova in `tools/prove/piste.js`.
