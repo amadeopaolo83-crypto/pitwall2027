@@ -82,6 +82,13 @@ function crSalvaGap(){
   try{ save(CR_GAPGIRI, { code: code, items: gapGiri.slice(-60) }); }catch(e){}
 }
 
+// Con "Azzera lo storico dei giri" si azzera anche il distacco giro per giro (lista e copia sul telefono).
+function crAzzeraGap(){
+  gapGiri = [];
+  try{ localStorage.removeItem(CR_GAPGIRI); }catch(e){}
+  try{ crRenderGapCard(); }catch(e){}
+}
+
 // A ogni nostro giro nuovo si annotano i distacchi di quel momento.
 function crRegistraGap(){
   const mio = passoRis && passoRis.mio;

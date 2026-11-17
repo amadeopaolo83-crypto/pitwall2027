@@ -312,6 +312,7 @@ function passoAzzera(){
   if(!confirm('Azzerare lo storico dei giri?')) return;
   passoLocale = { numero: passoLocale.numero, giri: [] };
   try{ localStorage.removeItem(PASSO_KEY); }catch(e){}
+  if(typeof crAzzeraGap === 'function') crAzzeraGap();
   if(socket && socket.connected) socket.emit('passoAzzera');
   passoRender();
 }

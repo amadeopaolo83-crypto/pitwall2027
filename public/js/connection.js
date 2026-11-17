@@ -285,6 +285,7 @@ function registerListeners(){
     passoLocale = { numero: passoLocale.numero, giri: [] };
     try{ localStorage.removeItem(PASSO_KEY); }catch(e){}
     passoRis = null;
+    if(typeof crAzzeraGap === 'function') crAzzeraGap();
     passoRender();
   });
   socket.on('aubStatus', renderAubStatus);

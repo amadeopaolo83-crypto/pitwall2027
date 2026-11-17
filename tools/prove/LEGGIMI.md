@@ -23,6 +23,7 @@ Le schermate vanno nella cartella temporanea (`pitcomm-prove`) o in `PROVE_OUT`.
 - `xss.js`: nomi dei pulsanti e dei messaggi con codice HTML non devono eseguire nulla.
 - `sim13.js`: prova colori (rivali fissi, colori verde/giallo sull'auto a ogni cambio di ritmo) e miglior giro assurdo (es. 2,482 s) che non deve falsare il passo.
 - `piste.js` (server) e `piste1.js` (schermata): libreria delle piste: salva, carica, nuova pista, elimina, copia automatica, limite 20, archivio, ripristino dopo riavvio, l'auto non vede i dati.
+- `azzera1.js`: "Azzera lo storico dei giri" azzera anche il distacco giro per giro (anche da un altro telefono).
 - `tasti1.js`: schede del box (Comm, Gara, Passo, Impostazioni, Timing), ogni tasto si illumina 1 s, turno pilota solo in pista, cambio pilota a mano, stint massimo, avviso auto ferma in corsia.
 - `tocchi.js`: nel box ogni cosa da toccare e' almeno 52x52 px e niente esce dallo schermo o dal suo riquadro (telefono, orizzontale, tablet; giorno e notte).
 - `apk.js`: controlli sui sorgenti Android (servizio di tipo location, permessi all'avvio, pagina ricreata se cade o si blocca). Non sostituisce la compilazione (`android.yml`) ne' i telefoni veri.
