@@ -353,6 +353,8 @@ function crGiriGara(){
   if(inizio == null || typeof passoLocale === 'undefined') return mio.giri;
   let base = 0;
   passoLocale.giri.forEach((g) => { if(g && g.ts < inizio && g.n > base) base = g.n; });
+  // Il contatore del live timing e' ripartito (nuova sessione / simulazione rifatta): i giri vecchi in memoria non contano.
+  if(base > mio.giri) base = 0;
   return Math.max(0, mio.giri - base);
 }
 
