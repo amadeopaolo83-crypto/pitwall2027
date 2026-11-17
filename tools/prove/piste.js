@@ -124,8 +124,19 @@ const tracciato = Array.from({ length: 12 }, (_, i) => P(46.0 + 0.0005 * Math.co
     V.ok('salvare una pista non cancella i giri', giri() === 2 && sgn() === 2, { g: giri(), s: sgn() });
     await chiedi(bx, 'pistaCarica', { nome: 'GA' });
     V.ok('pista caricata: giri cancellati', sgn() === 3 && !(giri() > 0), { g: giri(), s: sgn() });
-    metti(); await chiedi(bx, 'pistaNuova');
+    metti(); await chiedi(bx, 'pistaNuova', {});
     V.ok('pista nuova: giri cancellati', sgn() === 4 && !(giri() > 0), { g: giri(), s: sgn() });
+  }
+  // la X sull'auto chiude l'arrivo, ma solo a gara finita (e non cancella i giri)
+  {
+    const bx = nuovo(), au = nuovo(); await entra(bx, 'TEST7', 'box'); await entra(au, 'TEST7', 'auto');
+    const T = getRoomState('TEST7').raceTimer;
+    bx.invia('timerDebugJump', { preset: 'race-last-hour' }); au.invia('timerDebugJump', { preset: 'reset' });
+    V.ok('auto: "reset" in gara NON passa', T.phase === 'race', T.phase);
+    bx.invia('finishTrigger', {}); au.invia('timerDebugJump', { preset: 'reset' });
+    V.ok('auto: la X chiude l\'arrivo (torna a "start")', T.phase === 'start' && !T.finishTriggered, T.phase);
+    bx.invia('finishTrigger', {}); au.invia('timerDebugJump', { preset: 'race-near-finish' });
+    V.ok('auto: altri salti restano vietati', T.phase === 'finished', T.phase);
   }
   V.fine();
 })();

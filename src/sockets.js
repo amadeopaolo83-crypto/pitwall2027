@@ -134,7 +134,9 @@ function registra(io) {
     // Gli eventi di comando passano solo se chi li manda e' entrato come box.
     if (typeof socket.use === "function") {
       socket.use(([evento, ...resto], next) => {
-        if (SOLO_BOX.has(evento) && joinedRole !== "box") return; // scartato in silenzio
+        // Eccezione: la X della schermata di arrivo sull'auto manda "reset"; vale solo a gara finita (vedi il gestore).
+        const xArrivo = evento === "timerDebugJump" && resto[0] && resto[0].preset === "reset" && joinedCode && getRoomState(joinedCode).raceTimer.phase === "finished";
+        if (SOLO_BOX.has(evento) && joinedRole !== "box" && !xArrivo) return; // scartato in silenzio
         // Doppio box: un secondario non fa i comandi riservati (salvo i ripristini dopo un riavvio).
         if (joinedRole === "box" && SOLO_PRIMARIO.has(evento) && !doppio.puoComandare(joinedCode, joinedBoxId)) {
           const dati = resto[0];
