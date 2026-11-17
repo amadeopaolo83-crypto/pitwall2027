@@ -21,7 +21,7 @@ g = al(1000);
 const pos = g.map((x) => x.pos), nostra = g.find((x) => x.numero === '77');
 V.ok('dopo 1000 s: ordine per giri poi tempo, posizioni consecutive', pos.every((p, k) => p === k + 1) && g.every((x, k) => k === 0 || x.giri < g[k - 1].giri || (x.giri === g[k - 1].giri && x.tempoTotale >= g[k - 1].tempoTotale)));
 V.ok('i nostri giri = i passaggi del simulatore', nostra.giri === corsa.passaggi.filter((x) => x <= 1000).length, [nostra.giri]);
-V.ok('intervallo in secondi con lo stesso giro, vuoto se doppiati; il primo e\' 0', g[0].intervallo === 0 && g.every((x, k) => k === 0 || (x.giri === g[k - 1].giri ? typeof x.intervallo === 'number' && x.intervallo >= 0 : x.intervallo === null)));
+V.ok('intervallo in secondi (preso all\'ultimo passaggio di chi sta dietro; vuoto solo se doppiati di un giro intero); il primo e\' 0', g[0].intervallo === 0 && g.every((x, k) => k === 0 || (x.giri === g[k - 1].giri ? typeof x.intervallo === 'number' && x.intervallo >= 0 : (x.intervallo === null || (typeof x.intervallo === 'number' && x.intervallo >= 0 && x.intervallo < x.ultimoGiro)))));
 // ritmo degli altri: giro tipico vicino a 100 s, con qualche sosta (giro lungo)
 const gir = s.auto.slice(1).flatMap((a) => a.giri.slice(1)); gir.sort((x, y) => x - y);
 const med = gir[Math.floor(gir.length / 2)];

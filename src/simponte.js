@@ -135,7 +135,12 @@ function classificaAl(s, t) {
     r.pos = k + 1;
     r.giriRitardo = primo.giri - r.giri;
     const davanti = righe[k - 1];
-    r.intervallo = !davanti ? 0 : (davanti.giri === r.giri && r.tempoTotale != null && davanti.tempoTotale != null) ? Math.round((r.tempoTotale - davanti.tempoTotale) * 1000) / 1000 : null;
+    // Come sui tabelloni veri: il distacco e' preso all'ultimo passaggio di chi sta dietro (stesso giro dei due) e resta quello
+    // fino al suo passaggio dopo; "1 giro" solo se e' un giro intero (doppiato), non solo perche' uno ha gia' passato la linea.
+    const ad = davanti ? s.auto.find((a) => a.numero === davanti.numero) : null, ar = s.auto.find((a) => a.numero === r.numero);
+    let gap = null;
+    if(ad && ar && r.giri > 0 && davanti.giri >= r.giri) gap = ar.passaggi[r.giri - 1] - ad.passaggi[r.giri - 1];
+    r.intervallo = !davanti ? 0 : (gap != null && gap >= 0 && (r.ultimoGiro == null || gap < r.ultimoGiro)) ? Math.round(gap * 1000) / 1000 : null;
     if (r.tempoTotale != null) r.tempoTotale = Math.round(r.tempoTotale * 1000) / 1000;
     if (r.ultimoGiro != null) r.ultimoGiro = Math.round(r.ultimoGiro * 1000) / 1000;
     if (r.migliorGiro != null) r.migliorGiro = Math.round(r.migliorGiro * 1000) / 1000;
