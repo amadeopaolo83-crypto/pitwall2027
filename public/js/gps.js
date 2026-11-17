@@ -517,8 +517,8 @@ function gpsControllaFermo(){
     if(socket && socket.connected) socket.emit('cambioDomanda', { ancoraDa: gpsAncoraDa });
     try{ if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }catch(e){}
     try{ if(typeof playAlertBeep === 'function') playAlertBeep(); }catch(e){}
-    if(typeof notificaAndroid === 'function') notificaAndroid('PitComm', 'Auto ferma ai box: era un cambio pilota?');
-    notificaLocale('PitComm: cambio pilota?', 'Auto ferma ai box: era un cambio pilota?', 'pitcomm-cambio');
+    if(typeof notificaAndroid === 'function') notificaAndroid('PitWall 27', 'Auto ferma ai box: era un cambio pilota?');
+    notificaLocale('PitWall 27: cambio pilota?', 'Auto ferma ai box: era un cambio pilota?', 'pitcomm-cambio');
     gpsRender();
   }
 }
@@ -539,8 +539,8 @@ function gpsDomandaRemota(d){
   if(d && Number.isFinite(d.ancoraDa)) gpsAncoraDa = d.ancoraDa;
   try{ if(navigator.vibrate) navigator.vibrate([200, 100, 200]); }catch(e){}
   try{ if(typeof playAlertBeep === 'function') playAlertBeep(); }catch(e){}
-  if(typeof notificaAndroid === 'function') notificaAndroid('PitComm', 'Auto ferma ai box: era un cambio pilota?');
-    notificaLocale('PitComm: cambio pilota?', 'Auto ferma ai box: era un cambio pilota?', 'pitcomm-cambio');
+  if(typeof notificaAndroid === 'function') notificaAndroid('PitWall 27', 'Auto ferma ai box: era un cambio pilota?');
+    notificaLocale('PitWall 27: cambio pilota?', 'Auto ferma ai box: era un cambio pilota?', 'pitcomm-cambio');
   gpsRender();
 }
 

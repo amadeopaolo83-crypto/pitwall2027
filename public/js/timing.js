@@ -1,5 +1,5 @@
 // Distacchi: dalla classifica live di AUBServer, o inseriti a mano dal box.
-// Il collegamento lo apre il server PitComm, non il telefono: AUBServer non
+// Il collegamento lo apre il server PitWall 27, non il telefono: AUBServer non
 // manda header CORS e la password resta in un posto solo invece che nel
 // browser di ogni dispositivo della squadra.
 

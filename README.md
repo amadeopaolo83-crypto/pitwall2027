@@ -1,6 +1,6 @@
 # Pitwall2027
 
-Copia di prova di PitComm (server + web app) con in più l'app Android (APK).
+PitWall 27 (server + web app, ex copia di prova di PitComm) con in più l'app Android (APK).
 
 - **`src/`, `public/`, `package.json`**: la web app e il server, copiati da `pitwallnew`. Su Render gira come **servizio separato**, così il servizio delle gare (`pitwallnew`) non si tocca.
 - **`android/`** (in arrivo): involucro Android che apre questo servizio, con schermo sempre acceso, notifiche e allarmi a schermo spento e, poi, le zone GPS box / rifornimento.
@@ -10,7 +10,7 @@ Quando la versione di prova funziona, si passa a questa: basta cambiare il repos
 
 ## App Android (cartella `android/`)
 
-Involucro Android di PitComm: apre la web app (indirizzo scelto al primo avvio, cambiabile dal tasto indietro),
+Involucro Android di PitWall 27 (id `it.pitwall.pitwall27`, diverso da PitComm: le due app si installano affiancate): apre la web app (indirizzo scelto al primo avvio, cambiabile dal tasto indietro),
 tiene lo schermo acceso, resta attivo a schermo spento (servizio in primo piano + wake lock),
 chiede di escludere il risparmio batteria e manda notifiche vere (`window.PitCommAndroid.notifica`).
 Dalla versione 1.2: notifiche e posizione si chiedono subito al primo avvio (poi la batteria); con la posizione concessa il

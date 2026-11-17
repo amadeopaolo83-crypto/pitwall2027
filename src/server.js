@@ -1,4 +1,4 @@
-// PitComm - server di comunicazione box <-> auto per gare endurance.
+// PitWall 27 - server di comunicazione box <-> auto per gare endurance.
 //
 // Questo file e' solo il punto di avvio: mette insieme i pezzi e accende il
 // server. La sostanza sta nei moduli accanto:
@@ -40,5 +40,5 @@ passo.init(io);
 sockets.registra(io);
 
 httpServer.listen(PORT, () => {
-  console.log(`PitComm server in ascolto sulla porta ${PORT}`);
+  console.log(`PitWall 27 server in ascolto sulla porta ${PORT}`);
 });

@@ -209,7 +209,7 @@ function avvisaMessaggio(testo){
   if(role !== 'box') return; // la sirena e' solo del box
   if(navigator.vibrate) navigator.vibrate(SOS_VIBRATION);
   if(loadSirenSettings().on) playSiren(); else playAlertBeep();
-  notificaAndroid('PitComm \u00b7 messaggio dall\u2019auto', testo || 'Nuovo messaggio');
+  notificaAndroid('PitWall 27 \u00b7 messaggio dall\u2019auto', testo || 'Nuovo messaggio');
 }
 
 function renderAlarmCard(){
@@ -239,7 +239,7 @@ function testSiren(){
 }
 
 // Solo nell'app Android: prova la notifica con la sirena (come a schermo spento).
-function testNotificaAndroid(){ notificaAndroid('PitComm', 'Prova della sirena delle notifiche', true); }
+function testNotificaAndroid(){ notificaAndroid('PitWall 27', 'Prova della sirena delle notifiche', true); }
 
 // Schermo sempre acceso sul box: la pagina resta in primo piano e la connessione non
 // cade, cosi' la sirena suona sempre. Si perde se la pagina va in secondo piano e si

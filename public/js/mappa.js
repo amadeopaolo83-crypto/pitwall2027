@@ -469,7 +469,7 @@ function mpCircuitoCarica(testo){
   const et = $('mpInfo');
   let d;
   try{ d = JSON.parse(testo); }catch(e){ et.textContent = 'Il file non e\u2019 un circuito valido.'; return false; }
-  if(!d || d.tipo !== 'pitcomm-circuito' || !d.gps || typeof d.gps !== 'object'){ et.textContent = 'Il file non e\u2019 un circuito di PitComm.'; return false; }
+  if(!d || d.tipo !== 'pitcomm-circuito' || !d.gps || typeof d.gps !== 'object'){ et.textContent = 'Il file non e\u2019 un circuito di PitWall 27.'; return false; }
   const parte = {};
   MP_CIRCUITO_CAMPI.forEach((k) => { if(d.gps[k] !== undefined) parte[k] = d.gps[k]; });
   const voci = ['box', 'refuelPoly', 'corsia', 'traguardo', 'giroRif', 'tracciato'].filter((k) => parte[k]).length;

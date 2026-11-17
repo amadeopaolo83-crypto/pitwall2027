@@ -45,7 +45,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 /**
- * PitComm Android: apre la web app di PitComm (l'indirizzo si sceglie al primo avvio e si
+ * PitWall 27 Android: apre la web app di PitWall 27 (l'indirizzo si sceglie al primo avvio e si
  * puo' cambiare), tiene lo schermo acceso, resta attiva a schermo spento grazie a un
  * servizio in primo piano e manda notifiche vere al box.
  */
@@ -229,7 +229,7 @@ public class MainActivity extends Activity {
         l.setPadding(p, p, p, p);
 
         TextView titolo = new TextView(this);
-        titolo.setText("PitComm");
+        titolo.setText("PitWall 27");
         titolo.setTextColor(0xFFF5C518);
         titolo.setTextSize(28);
         titolo.setGravity(Gravity.CENTER);
@@ -271,7 +271,7 @@ public class MainActivity extends Activity {
     }
 
     private void mostraIndirizzo(String testo) {
-        messaggio.setText(testo != null ? testo : "Scrivi l'indirizzo della web app di PitComm (quello di Render).");
+        messaggio.setText(testo != null ? testo : "Scrivi l'indirizzo della web app di PitWall 27 (quello di Render).");
         campoUrl.setText(prefs.getString(KEY_URL, URL_PREDEFINITO));
         schermataIndirizzo.setVisibility(View.VISIBLE);
     }
@@ -362,7 +362,7 @@ public class MainActivity extends Activity {
             web.goBack();
         } else {
             new AlertDialog.Builder(this)
-                    .setTitle("PitComm")
+                    .setTitle("PitWall 27")
                     .setItems(new String[]{"Cambia indirizzo", "Riduci a icona", "Annulla"}, (d, which) -> {
                         if (which == 0) mostraIndirizzo(null);
                         else if (which == 1) moveTaskToBack(true);

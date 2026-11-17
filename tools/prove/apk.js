@@ -9,6 +9,11 @@ const srv = fs.readFileSync(path.join(A, 'java/it/pitwall/pitcomm/KeepAliveServi
 const act = fs.readFileSync(path.join(A, 'java/it/pitwall/pitcomm/MainActivity.java'), 'utf8');
 const corpo = (testo, firma) => { const i = testo.indexOf(firma); if (i < 0) return ''; let d = 0, j = testo.indexOf('{', i); const k = j; for (; j < testo.length; j++) { if (testo[j] === '{') d++; else if (testo[j] === '}' && --d === 0) break; } return testo.slice(k, j + 1); };
 
+// Identita': id diverso dalla vecchia app PitComm (altrimenti l'APK nuovo la sostituirebbe) e nome nuovo
+const gradle = fs.readFileSync(path.join(C.REPO, 'android', 'app', 'build.gradle'), 'utf8');
+V.ok('id applicazione diverso dalla vecchia PitComm', /applicationId '(?!it\.pitwall\.pitcomm')[\w.]+'/.test(gradle) && !/applicationId 'it\.pitwall\.pitcomm'/.test(gradle));
+V.ok('nome dell\'app nel manifest: PitWall 27', /android:label="PitWall 27"/.test(man));
+
 // Manifest
 for (const p of ['FOREGROUND_SERVICE', 'FOREGROUND_SERVICE_LOCATION', 'FOREGROUND_SERVICE_SPECIAL_USE', 'ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'POST_NOTIFICATIONS', 'WAKE_LOCK', 'REQUEST_IGNORE_BATTERY_OPTIMIZATIONS']) {
   V.ok('manifest: permesso ' + p, man.includes(`android.permission.${p}"`));

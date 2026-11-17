@@ -1,4 +1,4 @@
-# PitComm
+# PitWall 27
 
 Comunicazione **box ↔ auto** per gare endurance. Un solo server (Node.js) serve
 l'app web e la comunicazione in tempo reale: un indirizzo solo per tutti.

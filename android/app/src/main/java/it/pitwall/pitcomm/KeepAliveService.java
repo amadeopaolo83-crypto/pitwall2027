@@ -16,7 +16,7 @@ import android.os.PowerManager;
 
 /**
  * Servizio in primo piano: tiene viva l'app (e la CPU) a schermo spento, con una notifica
- * fissa "PitComm attivo". Senza questo Android la fermerebbe dopo poco.
+ * fissa "PitWall 27 attivo". Senza questo Android la fermerebbe dopo poco.
  * Se la posizione e' concessa e' anche di tipo "location" (GPS dell'auto a schermo spento);
  * MainActivity lo riavvia quando il permesso arriva, per aggiungere il tipo.
  */
@@ -28,7 +28,7 @@ public class KeepAliveService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         NotificationManager nm = getSystemService(NotificationManager.class);
-        nm.createNotificationChannel(new NotificationChannel(CANALE, "PitComm attivo", NotificationManager.IMPORTANCE_LOW));
+        nm.createNotificationChannel(new NotificationChannel(CANALE, "PitWall 27 attivo", NotificationManager.IMPORTANCE_LOW));
 
         PendingIntent pi = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
@@ -36,7 +36,7 @@ public class KeepAliveService extends Service {
         // ferma il GPS dell'auto se lo schermo si spegne o si passa a un'altra app.
         boolean posizione = posizioneConcessa(this);
         Notification n = new Notification.Builder(this, CANALE)
-                .setContentTitle("PitComm attivo")
+                .setContentTitle("PitWall 27 attivo")
                 .setContentText(posizione ? "Collegato alla gara · GPS disponibile" : "Collegato alla gara")
                 .setSmallIcon(R.drawable.ic_stat)
                 .setContentIntent(pi)

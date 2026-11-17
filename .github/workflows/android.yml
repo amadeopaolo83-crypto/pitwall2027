@@ -31,13 +31,13 @@ jobs:
       - name: Salva l'APK tra gli artefatti
         uses: actions/upload-artifact@v4
         with:
-          name: PitComm-apk
+          name: PitWall27-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Pubblica in Releases (ultima versione)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp android/app/build/outputs/apk/debug/app-debug.apk PitComm.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk PitWall27.apk
           gh release delete apk-latest --cleanup-tag --yes || true
-          gh release create apk-latest PitComm.apk --title "PitComm APK" --notes "Ultima versione compilata. Scaricala dal telefono e installala." --target "${{ github.sha }}"
+          gh release create apk-latest PitWall27.apk --title "PitWall 27 APK" --notes "Ultima versione compilata. Scaricala dal telefono e installala." --target "${{ github.sha }}"

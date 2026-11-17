@@ -1,4 +1,4 @@
-# PitComm / Pitwall2027: istruzioni per Claude Code
+# PitWall 27 (ex PitComm) / Pitwall2027: istruzioni per Claude Code
 
 Chi lavora con te: coordina gare endurance di 24 ore. **Risposte brevi, in italiano.** Il progetto e' la sua app per far parlare
 box e auto (PWA + server Node + involucro Android). Questo repository (`Pitwall2027`) e' la copia di prova; quello che si usa in gara e'

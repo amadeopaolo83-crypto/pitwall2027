@@ -7,7 +7,7 @@ self.addEventListener('fetch', () => {}); // passthrough
 
 // Arriva anche ad app chiusa o schermo spento (finché il browser è vivo in background)
 self.addEventListener('push', (event) => {
-  let data = { title: "PitComm", body: "Messaggio dall'auto" };
+  let data = { title: "PitWall 27", body: "Messaggio dall'auto" };
   try { data = event.data.json(); } catch (e) {}
   event.waitUntil(
     self.registration.showNotification(data.title, {

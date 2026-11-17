@@ -57,7 +57,7 @@
   $('file').onchange = (ev) => {
     const f = ev.target.files[0]; if (!f) return;
     const r = new FileReader();
-    r.onload = () => { try { const d = JSON.parse(r.result); if (d.tipo !== 'pitcomm-circuito' || !d.gps) throw new Error('non e’ un circuito di PitComm'); caricaCircuito(d.gps, f.name); } catch (e) { $('circ').textContent = 'File non valido: ' + e.message; } };
+    r.onload = () => { try { const d = JSON.parse(r.result); if (d.tipo !== 'pitcomm-circuito' || !d.gps) throw new Error('non e’ un circuito di PitWall 27'); caricaCircuito(d.gps, f.name); } catch (e) { $('circ').textContent = 'File non valido: ' + e.message; } };
     r.readAsText(f);
   };
   // Scenario per vedere i colori dei distacchi sull'auto: nessuna sosta degli altri, rivali fissi a 10 s, noi alterniamo +2% e -2% ogni 2 giri.
