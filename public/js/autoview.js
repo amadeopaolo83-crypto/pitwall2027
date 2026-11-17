@@ -100,7 +100,10 @@ function applySogliaGap(v){
 function coloraGap(lato, testo, chiave){
   const el = $(lato === 'Ahead' ? 'timingGapAhead' : 'timingGapBehind');
   if(!el) return;
-  const s = (typeof passoSecDaGap === 'function') ? passoSecDaGap(testo) : null;
+  let s = (typeof passoSecDaGap === 'function') ? passoSecDaGap(testo) : null;
+  // "1 giro", "2 giri": vale come un distacco enorme (1000 s per giro), cosi' da "1 giro" a "+20.4" il distacco e' migliorato (verde davanti)
+  const gg = s == null ? /^[+\-\u2212]?\s*(\d+)\s*gir[oi]\b/i.exec(String(testo || '').trim()) : null;
+  if(gg) s = Number(gg[1]) * 1000;
   const st = gapStato[lato];
   if(s == null){
     // Un valore non numerico ("1 giro", vuoto) dura pochi secondi a ogni giro, quando uno dei due ha gia' passato la linea:

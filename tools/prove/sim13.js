@@ -77,6 +77,18 @@ srv.listen(8786, async () => {
   let giuste = 0, totale = 0;
   for (let k = 5; k < dopo.length; k++) { const x = dopo[k], y = dopo[k - 5]; const dd = x.sa - y.sa; if (Math.abs(dd) > 1) { totale++; if ((dd < 0 && x.a === 'verde') || (dd > 0 && x.a === 'giallo')) giuste++; } }
   V.ok('colori: verde se il distacco davanti si riduce, giallo se aumenta (' + giuste + ' su ' + totale + ')', totale >= 20 && giuste / totale >= 0.9, { giuste, totale });
+  // da "1 giro" a un distacco numerico: davanti e' un miglioramento (verde); da numero a "1 giro" e' un peggioramento (giallo)
+  const gr = await pg.evaluate(() => {
+    role = 'auto'; timingView = 'assoluta'; sogliaGap = 0.1;
+    const base = { position: 4, gapAhead: '', gapBehind: '', numberAhead: '39', numberBehind: '52', nameAhead: 'A', nameBehind: 'B' };
+    const cl = (id) => { const e = document.getElementById(id); return e.classList.contains('g-up') ? 'verde' : e.classList.contains('g-down') ? 'giallo' : 'bianco'; };
+    renderTiming(Object.assign({}, base, { gapAhead: '1 giro', gapBehind: '-9.104' }));
+    renderTiming(Object.assign({}, base, { gapAhead: '+20.400', gapBehind: '1 giro' }));
+    const a = cl('timingGapAhead');
+    renderTiming(Object.assign({}, base, { gapAhead: '+20.400', gapBehind: '-8.915' }));
+    return { davanti: a, dietro: cl('timingGapBehind') };
+  });
+  V.ok('da "1 giro" a +20.4 davanti diventa verde; dietro da "1 giro" a -8.9 (si riavvicina) diventa giallo', gr.davanti === 'verde' && gr.dietro === 'giallo', gr);
   V.ok('nessun errore nella pagina', errs.length === 0, errs);
   await b.close(); srv.close(); V.fine();
 });
